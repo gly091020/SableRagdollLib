@@ -1,5 +1,6 @@
 package com.gly091020.SableRagdollLib.common;
 
+import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibCommand;
 import com.gly091020.SableRagdollLib.resource.file.RagdollDefFile;
 import com.google.gson.Gson;
@@ -50,10 +51,16 @@ public class RagdollReloadListener extends SimpleJsonResourceReloadListener {
                         var json = GSON.fromJson(reader, JsonElement.class);
                         RagdollDefFile.CODEC.parse(JsonOps.INSTANCE, json)
                                 .resultOrPartial(e -> LOGGER.error("重载文件时出现错误：{}", e))
-                                .ifPresent(defFile -> DefFileLoader.add(
-                                        ResourceLocation.fromNamespaceAndPath(resourceLocation.getNamespace(),
-                                                resourceLocation.getPath().replace("ragdoll/", "").replace(".json", "")),
-                                        defFile));
+                                .ifPresent(defFile -> {
+                                    String path = resourceLocation.getPath();
+                                    if (path.startsWith("ragdoll/")) {
+                                        path = path.substring("ragdoll/".length());
+                                    }
+                                    if (path.endsWith(".json")) {
+                                        path = path.substring(0, path.length() - ".json".length());
+                                    }
+                                    DefFileLoader.add(ResourceLocation.fromNamespaceAndPath(resourceLocation.getNamespace(), path), defFile);
+                                });
                     } catch (Exception e) {
                         LOGGER.error("重载文件时出现错误：", e);
                     }
