@@ -9,6 +9,7 @@ import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -92,7 +93,7 @@ public class Ragdoll {
         this.joints.addAll(joints);
     }
 
-    public List<ServerSubLevel> getSublevels(ServerLevel serverLevel){
+    public List<ServerSubLevel> getSublevels(){
         var container = ServerSubLevelContainer.getContainer(level);
         if(container == null)return List.of();
         var r = new ArrayList<ServerSubLevel>();
@@ -101,5 +102,15 @@ public class Ragdoll {
             if(s != null)r.add((ServerSubLevel) s);
         });
         return r;
+    }
+
+    public void addEntity(Entity entity){
+        var subs = getSublevels();
+        for (SubLevel subLevel: subs){
+            if(!(subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity partBlockEntity))return;
+            if(!partBlockEntity.getPartData().isMain())return;
+            partBlockEntity.addEntity(entity);
+            break;
+        }
     }
 }

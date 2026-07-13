@@ -37,6 +37,7 @@ public record RagdollJoints(List<JointData> jointData) {
         }
 
         // 在碰Pose3dc.transformPosition我就是傻逼
+        // 我真的再碰了Pose3dc.transformPosition，我就是傻逼
         public static Vector3d localToWorld(Pose3dc pose, Vector3dc local) {
             var dest = new Vector3d();
             double x = local.x();

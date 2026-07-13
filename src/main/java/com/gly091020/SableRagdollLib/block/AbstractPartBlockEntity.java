@@ -1,9 +1,11 @@
 package com.gly091020.SableRagdollLib.block;
 
+import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.Ragdoll;
 import com.gly091020.SableRagdollLib.api.RagdollHelper;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.RagdollTypeRegistry;
+import com.gly091020.SableRagdollLib.entity.PartSeat;
 import com.gly091020.SableRagdollLib.resource.file.RagdollHitbox;
 import com.gly091020.SableRagdollLib.resource.file.RagdollJoints;
 import com.gly091020.SableRagdollLib.resource.file.RagdollRenderData;
@@ -14,6 +16,7 @@ import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.companion.SableCompanion;
+import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -25,6 +28,7 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -216,5 +220,18 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
         super.onLoad();
         createJoint();
         addRagdoll();
+    }
+
+    public void addEntity(Entity entity){
+        if(level == null)return;
+        var subLevel = (ServerSubLevel) SableCompanion.INSTANCE.getContaining(level, getBlockPos());
+        if(subLevel == null)return;
+
+        var seat = new PartSeat(SableRagdollLib.PART_SEAT.get(), level);
+        seat.setPos(JOMLConversion.toMojang(RagdollJoints.JointData.localToWorld(subLevel.logicalPose(), new Vector3d())));
+        seat.setMainSubLevel(subLevel);
+
+        entity.level().addFreshEntity(seat);
+        seat.rideMe(entity);
     }
 }
