@@ -1,0 +1,9 @@
+{
+  "command.sableragdolllib.create.no_id": "无效的 ID",
+  "command.sableragdolllib.create.success": "已成功生成 %s",
+  "command.sableragdolllib.create.error": "生成时遇到错误",
+  "command.sableragdolllib.reload": "已重新加载",
+  "command.sableragdolllib.debug_render.success": "已切换调试渲染模式",
+  "text.sableragdolllib.open_file.input_id": "设置布娃娃基本属性",
+  "text.sableragdolllib.ragdoll": "布娃娃"
+}
