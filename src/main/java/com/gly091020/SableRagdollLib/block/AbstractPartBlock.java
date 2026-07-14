@@ -64,4 +64,9 @@ public abstract class AbstractPartBlock extends BaseEntityBlock {
         }
         super.onRemove(state, level, pos, state1, p_60519_);
     }
+
+    @Override
+    protected VoxelShape getVisualShape(BlockState p_60479_, BlockGetter p_60480_, BlockPos p_60481_, CollisionContext p_60482_) {
+        return Shapes.empty();
+    }
 }

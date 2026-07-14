@@ -29,6 +29,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -228,10 +229,14 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
         if(subLevel == null)return;
 
         var seat = new PartSeat(SableRagdollLib.PART_SEAT.get(), level);
-        seat.setPos(JOMLConversion.toMojang(RagdollJoints.JointData.localToWorld(subLevel.logicalPose(), new Vector3d())));
+        var localPos = JOMLConversion.toMojang(RagdollJoints.JointData.localToWorld(subLevel.logicalPose(), new Vector3d()));
+        seat.setPos(localPos);
         seat.setMainSubLevel(subLevel);
 
         entity.level().addFreshEntity(seat);
+        if(entity instanceof Player){
+            entity.setPos(localPos);
+        }
         seat.rideMe(entity);
     }
 }

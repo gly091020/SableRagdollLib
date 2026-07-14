@@ -1,13 +1,22 @@
 package com.gly091020.SableRagdollLib.entity;
 
+import com.gly091020.SableRagdollLib.api.RagdollManager;
+import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
+import dev.ryanhcode.sable.mixinhelpers.camera.new_camera_types.SableCameraTypes;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
@@ -21,6 +30,7 @@ public class PartSeat extends Entity {
     private boolean oldInvulnerable = false;
 
     private Entity onEntity;
+    private boolean cameraSet = false;
     public PartSeat(EntityType<PartSeat> type, Level level) {
         super(type, level);
     }
@@ -52,23 +62,32 @@ public class PartSeat extends Entity {
         compoundTag.putBoolean("silent", oldSilent);
         compoundTag.putBoolean("invisible", oldInvisible);
         compoundTag.putBoolean("invulnerable", oldInvulnerable);
-        if (mainUUID != null) {
+        if (mainUUID != null)
             compoundTag.putUUID("main", mainUUID);
-        }
     }
 
     @Override
     public void tick() {
-        if(level().isClientSide)return;
+        Entity passenger = this.getFirstPassenger();
+        if (passenger != null && passenger != onEntity) {
+            onEntity = passenger;
+        }
+
+        if(level().isClientSide){
+            if(cameraSet)return;
+            if(Minecraft.getInstance().player != null &&
+                    onEntity instanceof Player player &&
+                    player.is(Minecraft.getInstance().player))
+                Minecraft.getInstance().options.setCameraType(SableCameraTypes.SUB_LEVEL_VIEW_UNLOCKED);
+            cameraSet = true;
+            return;
+        }
+
         if(main == null && mainUUID != null){
             var container = (ServerSubLevelContainer) ServerSubLevelContainer.getContainer(level());
             if(container != null){
                 main = container.getSubLevel(mainUUID);
             }
-        }
-        Entity passenger = this.getFirstPassenger();
-        if (passenger != null && passenger != onEntity) {
-            onEntity = passenger;
         }
         if(onEntity != null){
             onEntity.setSilent(true);
@@ -77,16 +96,25 @@ public class PartSeat extends Entity {
         }
         if(main == null || main.isRemoved() || !this.isVehicle()){
             discard();
+            if(main != null &&
+                    main.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof
+                            AbstractPartBlockEntity partBlockEntity && partBlockEntity.getPartData().isMain()){
+                var rag = RagdollManager.get(partBlockEntity.getPartData().ragdollUUID());
+                if(rag != null)rag.remove();
+            }
         }
     }
 
     @Override
     public void remove(@NotNull RemovalReason reason) {
+        if(!reason.shouldDestroy())return;
         ejectPassengers();
         if(onEntity != null && onEntity.isAlive()){
             onEntity.setSilent(oldSilent);
             onEntity.setInvulnerable(oldInvulnerable);
             onEntity.setInvisible(oldInvisible);
+            if(onEntity instanceof Mob mob)
+                mob.setNoAi(false);
         }
         onEntity = null;
         super.remove(reason);
@@ -110,6 +138,8 @@ public class PartSeat extends Entity {
         entity.setSilent(true);
         entity.setInvisible(true);
         entity.setInvulnerable(true);
+        if(entity instanceof Mob mob)
+            mob.setNoAi(true);
 
         entity.startRiding(this, true);
         onEntity = entity;
@@ -118,5 +148,10 @@ public class PartSeat extends Entity {
     @Override
     public boolean isPickable() {
         return false;
+    }
+
+    @Override
+    public @NotNull Vec3 getPassengerRidingPosition(Entity entity) {
+        return position().add(0, -entity.getBbHeight() / 2, 0);
     }
 }

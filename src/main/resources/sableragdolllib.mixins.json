@@ -4,6 +4,7 @@
   "package": "com.gly091020.SableRagdollLib.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "ProjectileUtilMixin",
     "GetPhysicsDataBEMixin"
   ],
   "client": [
