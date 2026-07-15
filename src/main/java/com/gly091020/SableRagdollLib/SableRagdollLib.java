@@ -1,9 +1,11 @@
 package com.gly091020.SableRagdollLib;
 
 import com.gly091020.SableRagdollLib.api.RagdollManager;
+import com.gly091020.SableRagdollLib.api.ScheduleManager;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibCommand;
 import com.gly091020.SableRagdollLib.common.PartColliderBoxManager;
 import com.gly091020.SableRagdollLib.common.RagdollReloadListener;
+import com.gly091020.SableRagdollLib.common.ServerGetter;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
 import com.gly091020.SableRagdollLib.test.TestMain;
 import me.shedaniel.autoconfig.AutoConfig;
@@ -17,10 +19,10 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.PlayLevelSoundEvent;
@@ -28,6 +30,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -51,6 +54,10 @@ public class SableRagdollLib {
         ENTITY_TYPES.register(bus);
     }
 
+    public static boolean hasLDLib(){
+        return ModList.get().isLoaded("ldlib2");
+    }
+
     @EventBusSubscriber(modid = MODID)
     public static class EventHandler{
         @SubscribeEvent
@@ -67,11 +74,18 @@ public class SableRagdollLib {
         public static void onServerStop(ServerStoppingEvent event){
             PartColliderBoxManager.reset();
             RagdollManager.reset();
+            ServerGetter.server = null;
+        }
+
+        @SubscribeEvent
+        public static void onServerStart(ServerStartingEvent event){
+            ServerGetter.server = event.getServer();
         }
 
         @SubscribeEvent
         public static void onServerTick(ServerTickEvent.Post event){
             RagdollManager.tick();
+            ScheduleManager.tick(event.getServer());
         }
 
         @SubscribeEvent

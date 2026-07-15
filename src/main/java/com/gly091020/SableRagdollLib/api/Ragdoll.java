@@ -5,11 +5,13 @@ import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType;
+import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,5 +114,28 @@ public class Ragdoll {
             partBlockEntity.addEntity(entity);
             break;
         }
+    }
+
+    public void addLinearImpulse(Vec3 value){
+        ScheduleManager.scheduleDelayed(level, 2, () -> {
+            var container = ServerSubLevelContainer.getContainer(level);
+            if(container == null)return;
+            getSublevels().forEach(subLevel ->
+                    container.physicsSystem().getPhysicsHandle(subLevel).applyLinearImpulse(JOMLConversion.toJOML(value)));
+        });
+    }
+
+    public void addAngularImpulse(Vec3 value){
+        ScheduleManager.scheduleDelayed(level, 2, () -> {
+            var container = ServerSubLevelContainer.getContainer(level);
+            if(container == null)return;
+
+            var mainSub = container.getSubLevel(main);
+            if(mainSub == null)return;
+
+            container.physicsSystem()
+                    .getPhysicsHandle((ServerSubLevel) mainSub)
+                    .applyAngularImpulse(JOMLConversion.toJOML(value));
+        });
     }
 }

@@ -6,5 +6,7 @@
   "command.sableragdolllib.debug_render.success": "已切换调试渲染模式",
   "text.sableragdolllib.open_file.input_id": "设置布娃娃基本属性",
   "text.sableragdolllib.ragdoll": "布娃娃",
-  "entity.sableragdolllib.part_seat": "座位"
+  "entity.sableragdolllib.part_seat": "座位",
+  "text.sableragdolllib.open_file": "搜索布娃娃文件……",
+  "text.sableragdolllib.open_from_dp": "从数据包中打开"
 }

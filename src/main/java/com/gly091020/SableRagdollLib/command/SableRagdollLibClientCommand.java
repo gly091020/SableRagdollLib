@@ -1,5 +1,6 @@
 package com.gly091020.SableRagdollLib.command;
 
+import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.editor.EditorOpener;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
@@ -16,7 +17,7 @@ public class SableRagdollLibClientCommand {
         var root = Commands.literal(COMMAND);
 
         root.then(Commands.literal("debugRender").executes(SableRagdollLibClientCommand::debugRender));
-        if(ModList.get().isLoaded("ldlib2"))
+        if(SableRagdollLib.hasLDLib())
             root.then(Commands.literal("editor").executes(SableRagdollLibClientCommand::openEditor));
 
         dispatcher.register(root);

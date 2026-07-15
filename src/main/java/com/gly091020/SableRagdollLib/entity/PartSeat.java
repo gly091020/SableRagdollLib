@@ -15,7 +15,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
@@ -152,6 +151,7 @@ public class PartSeat extends Entity {
 
     @Override
     public @NotNull Vec3 getPassengerRidingPosition(Entity entity) {
+        if(entity instanceof Player)return position().add(0, -entity.getBbHeight(), 0);
         return position().add(0, -entity.getBbHeight() / 2, 0);
     }
 }

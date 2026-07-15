@@ -1,10 +1,12 @@
-package com.gly091020.SableRagdollLib.editor;
+package com.gly091020.SableRagdollLib.editor.project;
 
+import com.gly091020.SableRagdollLib.editor.RagdollEditor;
 import com.gly091020.SableRagdollLib.resource.editor.EditorDefFile;
 import com.gly091020.SableRagdollLib.resource.file.RagdollDefFile;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.lowdraglib2.editor.project.ProjectType;
 import com.lowdragmc.lowdraglib2.editor.resource.Resources;
+import com.lowdragmc.lowdraglib2.editor.ui.Editor;
 import com.mojang.logging.LogUtils;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -45,5 +47,11 @@ public class RagdollProject implements IProject {
         RagdollDefFile.CODEC.parse(NbtOps.INSTANCE, nbt)
                 .resultOrPartial(e -> LOGGER.error("加载时出现错误：{}", e))
                 .ifPresent(defFile -> file = EditorDefFile.fromRecord(defFile));
+    }
+
+    @Override
+    public void onLoad(Editor editor) {
+        if(editor instanceof RagdollEditor ragdollEditor)
+            ragdollEditor.reloadParts();
     }
 }

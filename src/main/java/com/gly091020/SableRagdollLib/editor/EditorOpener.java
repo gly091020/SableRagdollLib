@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 
 public class EditorOpener {
     public static void open(){
+        if(!Minecraft.getInstance().isLocalServer())return;
         var window = EditorWindow.open(RagdollEditor.WINDOW_ID, RagdollEditor::new);
         var ui = new ModularUI(UI.of(window))
                 .shouldCloseOnEsc(false)

@@ -1,6 +1,5 @@
-package com.gly091020.SableRagdollLib.editor;
+package com.gly091020.SableRagdollLib.editor.project;
 
-import com.gly091020.SableRagdollLib.api.Ragdoll;
 import com.gly091020.SableRagdollLib.resource.editor.EditorDefFile;
 import com.gly091020.SableRagdollLib.resource.file.RagdollDefFile;
 import com.google.gson.Gson;
