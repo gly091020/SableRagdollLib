@@ -16,6 +16,7 @@ public class EditorDefFile {
     private RagdollPosition position;
     private RagdollRenderData renderData;
     private RagdollJoints joints;
+    private RagdollExpressions expressions;
     private String mainBody;
     private CompoundTag extra;
 
@@ -26,6 +27,7 @@ public class EditorDefFile {
             RagdollPosition position,
             RagdollRenderData renderData,
             RagdollJoints joints,
+            RagdollExpressions expressions,
             String mainBody,
             CompoundTag extra
     ) {
@@ -37,6 +39,7 @@ public class EditorDefFile {
         this.joints = joints;
         this.mainBody = mainBody;
         this.extra = extra;
+        this.expressions = expressions;
     }
 
     public ResourceLocation getType() {
@@ -103,14 +106,22 @@ public class EditorDefFile {
         this.extra = extra;
     }
 
+    public RagdollExpressions getExpressions() {
+        return expressions;
+    }
+
+    public void setExpressions(RagdollExpressions expressions) {
+        this.expressions = expressions;
+    }
+
     public RagdollDefFile toRecord(){
         return new RagdollDefFile(
-                type, allParts, hitbox, position, renderData, joints, Optional.ofNullable(mainBody), extra
+                type, allParts, hitbox, position, renderData, joints, expressions, Optional.ofNullable(mainBody), extra
         );
     }
 
     public static EditorDefFile fromRecord(RagdollDefFile defFile){
-        return new EditorDefFile(defFile.type(), defFile.allParts(), defFile.hitbox(), defFile.position(), defFile.renderData(), defFile.joints(), defFile.mainBody().orElse(null), defFile.extra());
+        return new EditorDefFile(defFile.type(), defFile.allParts(), defFile.hitbox(), defFile.position(), defFile.renderData(), defFile.joints(), defFile.expressions(), defFile.mainBody().orElse(null), defFile.extra());
     }
 
     public static final ResourceLocation EMPTY = ResourceLocation.fromNamespaceAndPath(SableRagdollLib.MODID, "empty");
@@ -122,6 +133,7 @@ public class EditorDefFile {
                 new RagdollPosition(Map.of()),
                 new RagdollRenderData(Map.of()),
                 new RagdollJoints(List.of()),
+                new RagdollExpressions(Map.of()),
                 null,
                 new CompoundTag()
         );

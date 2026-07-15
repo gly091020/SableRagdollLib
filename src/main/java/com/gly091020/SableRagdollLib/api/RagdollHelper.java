@@ -48,6 +48,7 @@ public class RagdollHelper {
                         defFile.hitbox().hitbox().get(part),
                         defFile.renderData().renderData().get(part),
                         Optional.empty(),
+                        defFile.expressions(),
                         List.of()
                 ));
                 allBE.put(part, blockEntity);
@@ -83,6 +84,7 @@ public class RagdollHelper {
                 body.getPartData().hitbox(),
                 body.getPartData().renderData(),
                 Optional.of(data),
+                body.getPartData().expressions(),
                 allPart.values().stream().map(ServerSubLevel::getUniqueId).toList()
         ));
         var r = new Ragdoll(allPart.values().stream().toList());

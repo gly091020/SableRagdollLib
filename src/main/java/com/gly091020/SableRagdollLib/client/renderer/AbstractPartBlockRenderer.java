@@ -1,10 +1,8 @@
 package com.gly091020.SableRagdollLib.client.renderer;
 
-import com.gly091020.SableRagdollLib.SableRagdollLibClient;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibClientCommand;
 import com.gly091020.SableRagdollLib.common.DefFileLoader;
-import com.gly091020.SableRagdollLib.resource.file.RagdollDefFile;
 import com.gly091020.SableRagdollLib.resource.file.RagdollHitbox;
 import com.gly091020.SableRagdollLib.resource.file.RagdollJoints;
 import com.mojang.blaze3d.vertex.PoseStack;

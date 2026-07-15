@@ -4,10 +4,12 @@ import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
+import dev.ryanhcode.sable.api.sublevel.SubLevelObserver;
 import dev.ryanhcode.sable.api.sublevel.ticket.SubLevelLoadingTicketType;
 import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -48,11 +50,19 @@ public class Ragdoll {
         this.uuid = centerBE.getPartData().ragdollUUID();
         this.level = subLevels.getFirst().getLevel();
 
+        var container = ServerSubLevelContainer.getContainer(level);
+        if(container == null)return;
         if(SableRagdollLib.config.enableForceLoad){
-            var container = ServerSubLevelContainer.getContainer(level);
-            if(container == null)return;
             subLevels.forEach(subLevel -> container.addForceLoadTicket(subLevel, SubLevelLoadingTicketType.COMMAND_FORCED, null));
         }
+
+        container.addObserver(new SubLevelObserver() {
+            @Override
+            public void onSubLevelRemoved(SubLevel subLevel, SubLevelRemovalReason reason) {
+                if(subLevel instanceof ServerSubLevel serverSubLevel && subLevelUUIDList.contains(serverSubLevel.getUniqueId()))
+                    remove();
+            }
+        });
     }
 
     public UUID getUuid() {
@@ -77,6 +87,7 @@ public class Ragdoll {
     }
 
     public void remove(){
+        if(!alive)return;
         alive = false;
         var container = ServerSubLevelContainer.getContainer(level);
         if(container == null)return;

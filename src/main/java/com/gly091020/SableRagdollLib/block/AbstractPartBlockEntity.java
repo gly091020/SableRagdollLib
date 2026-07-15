@@ -6,6 +6,7 @@ import com.gly091020.SableRagdollLib.api.RagdollHelper;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.RagdollTypeRegistry;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
+import com.gly091020.SableRagdollLib.resource.file.RagdollExpressions;
 import com.gly091020.SableRagdollLib.resource.file.RagdollHitbox;
 import com.gly091020.SableRagdollLib.resource.file.RagdollJoints;
 import com.gly091020.SableRagdollLib.resource.file.RagdollRenderData;
@@ -107,6 +108,7 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
             RagdollHitbox.PartBox hitbox,
             RagdollRenderData.PartRenderData renderData,
             Optional<List<JointDataWithSublevel>> jointData,
+            RagdollExpressions expressions,
             List<UUID> subLevels){
         public static final Codec<Data> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.BOOL.fieldOf("isMain").forGetter(Data::isMain),
@@ -117,6 +119,7 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
                 RagdollHitbox.PartBox.CODEC.fieldOf("hitbox").forGetter(Data::hitbox),
                 RagdollRenderData.PartRenderData.CODEC.fieldOf("renderData").forGetter(Data::renderData),
                 JointDataWithSublevel.CODEC.listOf().optionalFieldOf("jointData").forGetter(Data::jointData),
+                RagdollExpressions.CODEC.optionalFieldOf("expressions", RagdollExpressions.EMPTY).forGetter(Data::expressions),
                 UUIDUtil.CODEC.listOf().fieldOf("subLevels").forGetter(Data::subLevels)
         ).apply(i, Data::new));
     }
@@ -201,7 +204,7 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
             if(subLevel == null){alive = false;continue;}
             subLevels.add((ServerSubLevel) subLevel);
         }
-        if(!alive && !RagdollTypeRegistry.getRagdollTypeAbilities(data.type).fracture()){
+        if(!alive){
             subLevels.forEach(subLevel -> {
                 if(!subLevel.isRemoved())subLevel.markRemoved();
             });

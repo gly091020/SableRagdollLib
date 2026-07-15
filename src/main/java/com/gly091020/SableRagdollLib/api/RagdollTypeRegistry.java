@@ -24,12 +24,6 @@ public class RagdollTypeRegistry {
     public record Settings(Supplier<AbstractPartBlock> partBlock,
                            Supplier<BlockEntityType<? extends AbstractPartBlockEntity>> partBE){ }
 
-    public record Abilities(boolean fracture, boolean interact){}
-
-    public static Abilities getRagdollTypeAbilities(ResourceLocation id){
-        return new Abilities(false, true);
-    }
-
     public static Collection<ResourceLocation> getAllType(){
         return SETTINGS.keySet();
     }

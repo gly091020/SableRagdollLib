@@ -15,6 +15,7 @@ public record RagdollDefFile(
         RagdollPosition position,
         RagdollRenderData renderData,
         RagdollJoints joints,
+        RagdollExpressions expressions,
         Optional<String> mainBody,
         CompoundTag extra) {
     public static final Codec<RagdollDefFile> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -24,6 +25,7 @@ public record RagdollDefFile(
             RagdollPosition.CODEC.fieldOf("position").forGetter(RagdollDefFile::position),
             RagdollRenderData.CODEC.fieldOf("render").forGetter(RagdollDefFile::renderData),
             RagdollJoints.CODEC.fieldOf("joints").forGetter(RagdollDefFile::joints),
+            RagdollExpressions.CODEC.optionalFieldOf("expressions", RagdollExpressions.EMPTY).forGetter(RagdollDefFile::expressions),
             Codec.STRING.optionalFieldOf("mainBody").forGetter(RagdollDefFile::mainBody),
             CompoundTag.CODEC.optionalFieldOf("extraData", new CompoundTag()).forGetter(RagdollDefFile::extra)
     ).apply(i, RagdollDefFile::new));
