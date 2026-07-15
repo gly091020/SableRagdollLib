@@ -117,25 +117,21 @@ public class Ragdoll {
     }
 
     public void addLinearImpulse(Vec3 value){
-        ScheduleManager.scheduleDelayed(level, 2, () -> {
-            var container = ServerSubLevelContainer.getContainer(level);
-            if(container == null)return;
-            getSublevels().forEach(subLevel ->
-                    container.physicsSystem().getPhysicsHandle(subLevel).applyLinearImpulse(JOMLConversion.toJOML(value)));
-        });
+        var container = ServerSubLevelContainer.getContainer(level);
+        if(container == null)return;
+        getSublevels().forEach(subLevel ->
+                container.physicsSystem().getPhysicsHandle(subLevel).applyLinearImpulse(JOMLConversion.toJOML(value)));
     }
 
     public void addAngularImpulse(Vec3 value){
-        ScheduleManager.scheduleDelayed(level, 2, () -> {
-            var container = ServerSubLevelContainer.getContainer(level);
-            if(container == null)return;
+        var container = ServerSubLevelContainer.getContainer(level);
+        if(container == null)return;
 
-            var mainSub = container.getSubLevel(main);
-            if(mainSub == null)return;
+        var mainSub = container.getSubLevel(main);
+        if(mainSub == null)return;
 
-            container.physicsSystem()
-                    .getPhysicsHandle((ServerSubLevel) mainSub)
-                    .applyAngularImpulse(JOMLConversion.toJOML(value));
-        });
+        container.physicsSystem()
+                .getPhysicsHandle((ServerSubLevel) mainSub)
+                .applyAngularImpulse(JOMLConversion.toJOML(value));
     }
 }
