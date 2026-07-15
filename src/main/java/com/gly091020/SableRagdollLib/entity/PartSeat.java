@@ -76,9 +76,10 @@ public class PartSeat extends Entity {
             if(cameraSet)return;
             if(Minecraft.getInstance().player != null &&
                     onEntity instanceof Player player &&
-                    player.is(Minecraft.getInstance().player))
+                    player.is(Minecraft.getInstance().player)) {
                 Minecraft.getInstance().options.setCameraType(SableCameraTypes.SUB_LEVEL_VIEW_UNLOCKED);
-            cameraSet = true;
+                cameraSet = true;
+            }
             return;
         }
 
