@@ -152,7 +152,10 @@ public class PartSeat extends Entity {
 
     @Override
     public @NotNull Vec3 getPassengerRidingPosition(Entity entity) {
-        if(entity instanceof Player)return position().add(0, -entity.getBbHeight(), 0);
-        return position().add(0, -entity.getBbHeight() / 2, 0);
+        return position().add(0, -entity.getBbHeight(), 0);
+    }
+
+    public UUID getMainUUID() {
+        return mainUUID;
     }
 }

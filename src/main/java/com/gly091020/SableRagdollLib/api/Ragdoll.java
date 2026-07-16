@@ -14,6 +14,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,6 +60,7 @@ public class Ragdoll {
         container.addObserver(new SubLevelObserver() {
             @Override
             public void onSubLevelRemoved(SubLevel subLevel, SubLevelRemovalReason reason) {
+                if(reason != SubLevelRemovalReason.REMOVED)return;
                 if(subLevel instanceof ServerSubLevel serverSubLevel && subLevelUUIDList.contains(serverSubLevel.getUniqueId()))
                     remove();
             }
@@ -121,28 +123,41 @@ public class Ragdoll {
         var subs = getSublevels();
         for (SubLevel subLevel: subs){
             if(!(subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity partBlockEntity))return;
-            if(!partBlockEntity.getPartData().isMain())return;
+            if(!partBlockEntity.getPartData().isMain())continue;
             partBlockEntity.addEntity(entity);
             break;
         }
     }
 
-    public void addLinearImpulse(Vec3 value){
+    public void addLinearImpulse(Vector3d value, boolean local){
         var container = ServerSubLevelContainer.getContainer(level);
         if(container == null)return;
-        getSublevels().forEach(subLevel ->
-                container.physicsSystem().getPhysicsHandle(subLevel).applyLinearImpulse(JOMLConversion.toJOML(value)));
+        getSublevels().forEach(subLevel -> {
+            var f = new Vector3d(value);
+            if(local)subLevel.logicalPose().transformNormalInverse(f);
+            container.physicsSystem().getPhysicsHandle(subLevel).applyLinearImpulse(f);
+        });
     }
 
-    public void addAngularImpulse(Vec3 value){
+    public void addLinearImpulse(Vec3 value, boolean local){
+        addLinearImpulse(JOMLConversion.toJOML(value), local);
+    }
+
+    public void addAngularImpulse(Vector3d value, boolean local){
         var container = ServerSubLevelContainer.getContainer(level);
         if(container == null)return;
 
         var mainSub = container.getSubLevel(main);
         if(mainSub == null)return;
 
+        var f = new Vector3d(value);
+        if(local)mainSub.logicalPose().transformNormalInverse(f);
         container.physicsSystem()
                 .getPhysicsHandle((ServerSubLevel) mainSub)
-                .applyAngularImpulse(JOMLConversion.toJOML(value));
+                .applyAngularImpulse(f);
+    }
+
+    public void addAngularImpulse(Vec3 value, boolean local){
+        addAngularImpulse(JOMLConversion.toJOML(value), local);
     }
 }
