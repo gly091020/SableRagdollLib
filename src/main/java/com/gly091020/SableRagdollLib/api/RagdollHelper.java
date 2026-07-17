@@ -25,6 +25,10 @@ import java.util.function.Consumer;
 
 public class RagdollHelper {
     public static Ragdoll createRagdoll(ServerLevel serverLevel, Vec3 pos, ResourceLocation id){
+        return createRagdoll(serverLevel, pos, Vec3.ZERO, id);
+    }
+
+    public static Ragdoll createRagdoll(ServerLevel serverLevel, Vec3 pos, Vec3 rotation, ResourceLocation id){
         var defFile = DefFileLoader.getDefFile(id);
         if(defFile == null)return null;
         var settings = RagdollTypeRegistry.getRagdollType(defFile.type());
@@ -89,6 +93,7 @@ public class RagdollHelper {
         ));
         var r = new Ragdoll(allPart.values().stream().toList());
         RagdollManager.add(r);
+        r.rotate(rotation);
         return r;
     }
 

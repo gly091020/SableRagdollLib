@@ -14,6 +14,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Quaterniond;
+import org.joml.Quaterniondc;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
@@ -159,5 +161,60 @@ public class Ragdoll {
 
     public void addAngularImpulse(Vec3 value, boolean local){
         addAngularImpulse(JOMLConversion.toJOML(value), local);
+    }
+
+    public void move(Vector3d offset, boolean local) {
+        var container = ServerSubLevelContainer.getContainer(level);
+        if (container == null) return;
+        var pipeline = container.physicsSystem().getPipeline();
+        getSublevels().forEach(subLevel -> {
+            var move = new Vector3d(offset);
+            if (local) {
+                subLevel.logicalPose().transformNormal(move);
+            }
+            var pose = subLevel.logicalPose();
+            Vector3d newPosition = new Vector3d(
+                    pose.position()
+            ).add(move);
+            pipeline.teleport(
+                    subLevel,
+                    newPosition,
+                    pose.orientation()
+            );
+        });
+    }
+
+    public void rotate(Quaterniondc rotation) {
+        var container = ServerSubLevelContainer.getContainer(level);
+        if (container == null) return;
+        var mainSub = container.getSubLevel(main);
+        if (mainSub == null) return;
+        var pipeline = container.physicsSystem().getPipeline();
+        Vector3d center = new Vector3d(
+                mainSub.logicalPose().position()
+        );
+        getSublevels().forEach(subLevel -> {
+            var oldPose = subLevel.logicalPose();
+            Vector3d pos = new Vector3d(
+                    oldPose.position()
+            );
+            Vector3d offset = pos.sub(center);
+            rotation.transform(offset);
+            Vector3d newPos = new Vector3d(center)
+                    .add(offset);
+            Quaterniond newRotation =
+                    new Quaterniond(oldPose.orientation());
+            newRotation.mul(rotation);
+            pipeline.teleport(
+                    subLevel,
+                    newPos,
+                    newRotation
+            );
+        });
+    }
+
+    // 单位是角度制
+    public void rotate(Vec3 vec3){
+        rotate(new Quaterniond().rotationXYZ(Math.toRadians(vec3.x), Math.toRadians(vec3.y), Math.toRadians(vec3.z)));
     }
 }
