@@ -6,6 +6,7 @@ import com.gly091020.SableRagdollLib.common.RagdollReloadListener;
 import com.gly091020.SableRagdollLib.common.ServerGetter;
 import com.gly091020.SableRagdollLib.editor.project.RagdollProject;
 import com.gly091020.SableRagdollLib.editor.project.RagdollProjectType;
+import com.gly091020.SableRagdollLib.editor.util.EditorRenderMode;
 import com.gly091020.SableRagdollLib.editor.util.RagdollDialogHelper;
 import com.gly091020.SableRagdollLib.editor.util.RagdollFileMenu;
 import com.gly091020.SableRagdollLib.editor.view.ModelTreeView;
@@ -14,6 +15,10 @@ import com.gly091020.SableRagdollLib.editor.view.PartEditorView;
 import com.google.common.util.concurrent.Runnables;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
+import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
+import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
+import dev.vfyjxf.taffy.style.FlexDirection;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +33,8 @@ public class RagdollEditor extends Editor {
     public ModelView modelView;
     public ModelTreeView modelTreeView;
 
+    public EditorRenderMode editorRenderMode = EditorRenderMode.HITBOX;
+
     @Override
     protected @NotNull Editor createNewEditorInstance() {
         return new RagdollEditor();
@@ -40,6 +47,7 @@ public class RagdollEditor extends Editor {
         ragdollFileMenu.addProjectProvider(RagdollProjectType.TYPE);
         menuContainer.addChildren(ragdollFileMenu.createMenuTab(), viewMenu.createMenuTab());
         initRagdollEditorView();
+        initBottomBar();
     }
 
     @Override
@@ -47,15 +55,30 @@ public class RagdollEditor extends Editor {
 
     }
 
-    @Override
-    protected void onPrepareHistoryView() {
+    public void initBottomBar(){
+        var bar = new UIElement();
+        bar.addClass("__view-container__");
+        bar.getLayout().height(15).flexDirection(FlexDirection.ROW_REVERSE);
 
+        for (EditorRenderMode mode: EditorRenderMode.values()){
+            var button = new Button();
+            button.setText(mode.getName());
+            button.setOnClick(event -> editorRenderMode = mode);
+            bar.addChild(button);
+        }
+
+        addChild(bar);
     }
 
     public void initRagdollEditorView(){
         modelView = new ModelView(this);
-        partEditorView = new PartEditorView();
+        partEditorView = new PartEditorView(this);
         modelTreeView = new ModelTreeView(modelView);
+
+        modelView.setName(Component.translatable("text.sableragdolllib.view.model").getString());
+        partEditorView.setName(Component.translatable("text.sableragdolllib.view.part_editor").getString());
+        modelTreeView.setName(Component.translatable("text.sableragdolllib.view.model_tree").getString());
+
         placeView(modelView, () -> centerWindow.getLeftTop());
         placeView(partEditorView, () -> centerWindow.getLeftTop());
         placeView(modelTreeView, () -> leftWindow.getLeftTop());
@@ -64,9 +87,17 @@ public class RagdollEditor extends Editor {
     public void reloadParts(){
         var project = getRagdollProject();
         if(project == null)return;
-        partEditorView.reloadParts(project);
+        reloadModelView();
         modelView.initModel(project);
         modelTreeView.initTree();
+    }
+
+    public void initInspector(){
+        inspectorView.inspect(getRagdollProject().file, configurator -> reloadModelView());
+    }
+
+    public void reloadModelView(){
+        partEditorView.reloadParts(getRagdollProject());
     }
 
     public RagdollProject getRagdollProject(){
@@ -77,7 +108,7 @@ public class RagdollEditor extends Editor {
     protected void loadNewProject(@NotNull IProject project, @Nullable File projectFile) {
         if(projectFile != null && projectFile.isFile()){
             super.loadNewProject(project, projectFile);
-            if(project instanceof RagdollProject ragdollProject && !RagdollTypeRegistry.getAllType().contains(ragdollProject.file.getType()))
+            if(project instanceof RagdollProject ragdollProject && !RagdollTypeRegistry.getAllType().contains(ragdollProject.file.type))
                 closeCurrentProject(false, Runnables.doNothing());
             return;
         }

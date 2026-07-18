@@ -14,7 +14,6 @@ import com.mojang.serialization.JsonOps;
 
 import java.io.File;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +55,7 @@ public class RagdollFileMenu extends FileMenu {
                 Files.createDirectories(path.getParent());
                 Files.writeString(path,
                         RagdollProjectType.GSON.toJson(RagdollDefFile.CODEC.encodeStart(JsonOps.INSTANCE, d).getOrThrow()),
-                        StandardOpenOption.CREATE);
+                        StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                 openFile(path.toFile());
             }catch (Exception e){
                 Dialog.showNotification("editor.error", "editor.loading_failed", null).show(editor);

@@ -53,7 +53,7 @@ public class RagdollProjectType extends ProjectType {
                 .resultOrPartial(e -> LOGGER.error("保存时出现错误：{}", e));
         if(r.isPresent()) {
             Files.createDirectories(file.toPath().getParent());
-            Files.writeString(file.toPath(), GSON.toJson(r.get()), StandardOpenOption.CREATE);
+            Files.writeString(file.toPath(), GSON.toJson(r.get()), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         }
     }
 

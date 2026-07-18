@@ -2,32 +2,103 @@ package com.gly091020.SableRagdollLib.resource.editor;
 
 import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.resource.file.*;
+import com.lowdragmc.lowdraglib2.configurator.IConfigurable;
+import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigList;
+import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
+import com.lowdragmc.lowdraglib2.configurator.ui.Configurator;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-public class EditorDefFile {
-    private ResourceLocation type;
-    private List<String> allParts;
-    private RagdollHitbox hitbox;
-    private RagdollPosition position;
-    private RagdollRenderData renderData;
-    private RagdollJoints joints;
-    private RagdollExpressions expressions;
-    private String mainBody;
-    private CompoundTag extra;
+public class EditorDefFile implements IConfigurable {
+
+    @Configurable
+    public ResourceLocation type;
+
+
+    @Configurable
+    public List<String> allParts;
+
+
+    @Configurable
+    @ConfigList(
+            configuratorMethod = "buildHitboxConfigurator",
+            addDefaultMethod = "addDefaultHitbox"
+    )
+    public List<EditorRagdollHitbox.EditorHitboxEntry> hitbox;
+
+
+    @Configurable
+    @ConfigList(
+            configuratorMethod = "buildPositionConfigurator",
+            addDefaultMethod = "addDefaultPosition"
+    )
+    public List<EditorRagdollPosition.EditorPositionEntry> position;
+
+
+    @Configurable
+    @ConfigList(
+            configuratorMethod = "buildRenderDataConfigurator",
+            addDefaultMethod = "addDefaultRenderData"
+    )
+    public List<EditorRagdollRenderData.EditorRenderEntry> renderData;
+
+
+    @Configurable
+    @ConfigList(
+            configuratorMethod = "buildJointsConfigurator",
+            addDefaultMethod = "addDefaultJoints"
+    )
+    public List<EditorRagdollJoints.EditorJointData> joints;
+
+
+    @Configurable
+    @ConfigList(
+            configuratorMethod = "buildExpressionsConfigurator",
+            addDefaultMethod = "addDefaultExpressions"
+    )
+    public List<EditorRagdollExpressions.EditorExpressionPart> expressions;
+
+
+    @Configurable
+    public String mainBody;
+
+
+    @Configurable
+    public CompoundTag extra;
+
+
+
+    public EditorDefFile() {
+        this(
+                EMPTY,
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                null,
+                new CompoundTag()
+        );
+    }
+
 
     public EditorDefFile(
             ResourceLocation type,
             List<String> allParts,
-            RagdollHitbox hitbox,
-            RagdollPosition position,
-            RagdollRenderData renderData,
-            RagdollJoints joints,
-            RagdollExpressions expressions,
+            List<EditorRagdollHitbox.EditorHitboxEntry> hitbox,
+            List<EditorRagdollPosition.EditorPositionEntry> position,
+            List<EditorRagdollRenderData.EditorRenderEntry> renderData,
+            List<EditorRagdollJoints.EditorJointData> joints,
+            List<EditorRagdollExpressions.EditorExpressionPart> expressions,
             String mainBody,
             CompoundTag extra
     ) {
@@ -37,105 +108,296 @@ public class EditorDefFile {
         this.position = position;
         this.renderData = renderData;
         this.joints = joints;
+        this.expressions = expressions;
         this.mainBody = mainBody;
         this.extra = extra;
-        this.expressions = expressions;
     }
 
-    public ResourceLocation getType() {
-        return type;
-    }
 
-    public void setType(ResourceLocation type) {
-        this.type = type;
-    }
 
-    public List<String> getAllParts() {
-        return allParts;
-    }
+    public RagdollDefFile toRecord() {
 
-    public void setAllParts(List<String> allParts) {
-        this.allParts = allParts;
-    }
+        Map<String, RagdollHitbox.PartBox> hitboxMap =
+                new LinkedHashMap<>();
 
-    public RagdollHitbox getHitbox() {
-        return hitbox;
-    }
+        for (var entry : hitbox) {
+            hitboxMap.put(
+                    entry.name,
+                    entry.box.toPartBox()
+            );
+        }
 
-    public void setHitbox(RagdollHitbox hitbox) {
-        this.hitbox = hitbox;
-    }
 
-    public RagdollPosition getPosition() {
-        return position;
-    }
+        Map<String, RagdollPosition.PartSetting> positionMap =
+                new LinkedHashMap<>();
 
-    public void setPosition(RagdollPosition position) {
-        this.position = position;
-    }
+        for (var entry : position) {
+            positionMap.put(
+                    entry.name,
+                    entry.setting.toPartSetting()
+            );
+        }
 
-    public RagdollRenderData getRenderData() {
-        return renderData;
-    }
 
-    public void setRenderData(RagdollRenderData renderData) {
-        this.renderData = renderData;
-    }
+        Map<String, RagdollRenderData.PartRenderData> renderMap =
+                new LinkedHashMap<>();
 
-    public RagdollJoints getJoints() {
-        return joints;
-    }
+        for (var entry : renderData) {
+            renderMap.put(
+                    entry.name,
+                    entry.data.toPartRenderData()
+            );
+        }
 
-    public void setJoints(RagdollJoints joints) {
-        this.joints = joints;
-    }
 
-    public Optional<String> getMainBody() {
-        return Optional.ofNullable(mainBody);
-    }
+        List<RagdollJoints.JointData> jointList =
+                new ArrayList<>();
 
-    public void setMainBody(String mainBody) {
-        this.mainBody = mainBody;
-    }
+        for (var joint : joints) {
+            jointList.add(
+                    joint.toJointData()
+            );
+        }
 
-    public CompoundTag getExtra() {
-        return extra;
-    }
 
-    public void setExtra(CompoundTag extra) {
-        this.extra = extra;
-    }
+        Map<String, Map<String, RagdollExpressions.Expression>> expressionMap =
+                new LinkedHashMap<>();
 
-    public RagdollExpressions getExpressions() {
-        return expressions;
-    }
+        for (var part : expressions) {
 
-    public void setExpressions(RagdollExpressions expressions) {
-        this.expressions = expressions;
-    }
+            Map<String, RagdollExpressions.Expression> map =
+                    new LinkedHashMap<>();
 
-    public RagdollDefFile toRecord(){
+            for (var entry : part.expressions) {
+                map.put(
+                        entry.name,
+                        entry.expression.toExpression()
+                );
+            }
+
+            expressionMap.put(
+                    part.partName,
+                    map
+            );
+        }
+
+
         return new RagdollDefFile(
-                type, allParts, hitbox, position, renderData, joints, expressions, Optional.ofNullable(mainBody), extra
+                type,
+                new ArrayList<>(allParts),
+                new RagdollHitbox(hitboxMap),
+                new RagdollPosition(positionMap),
+                new RagdollRenderData(renderMap),
+                new RagdollJoints(jointList),
+                new RagdollExpressions(expressionMap),
+                Optional.ofNullable(mainBody),
+                extra
         );
     }
 
-    public static EditorDefFile fromRecord(RagdollDefFile defFile){
-        return new EditorDefFile(defFile.type(), defFile.allParts(), defFile.hitbox(), defFile.position(), defFile.renderData(), defFile.joints(), defFile.expressions(), defFile.mainBody().orElse(null), defFile.extra());
+
+
+    public static EditorDefFile fromRecord(
+            RagdollDefFile defFile
+    ) {
+
+        List<EditorRagdollHitbox.EditorHitboxEntry> hitbox =
+                new ArrayList<>();
+
+        defFile.hitbox().hitbox().forEach(
+                (name, box) ->
+                        hitbox.add(
+                                new EditorRagdollHitbox.EditorHitboxEntry(
+                                        name,
+                                        EditorRagdollHitbox.EditorPartBox.from(box)
+                                )
+                        )
+        );
+
+
+        List<EditorRagdollPosition.EditorPositionEntry> position =
+                new ArrayList<>();
+
+        defFile.position().position().forEach(
+                (name, setting) ->
+                        position.add(
+                                new EditorRagdollPosition.EditorPositionEntry(
+                                        name,
+                                        EditorRagdollPosition.EditorPartSetting.from(setting)
+                                )
+                        )
+        );
+
+
+        List<EditorRagdollRenderData.EditorRenderEntry> renderData =
+                new ArrayList<>();
+
+        defFile.renderData().renderData().forEach(
+                (name, data) ->
+                        renderData.add(
+                                new EditorRagdollRenderData.EditorRenderEntry(
+                                        name,
+                                        EditorRagdollRenderData.EditorPartRenderData.from(data)
+                                )
+                        )
+        );
+
+
+        List<EditorRagdollJoints.EditorJointData> joints =
+                new ArrayList<>();
+
+        for (var joint : defFile.joints().jointData()) {
+            joints.add(
+                    EditorRagdollJoints.EditorJointData.from(joint)
+            );
+        }
+
+
+        List<EditorRagdollExpressions.EditorExpressionPart> expressions =
+                new ArrayList<>();
+
+        defFile.expressions().expressions().forEach(
+                (partName, map) -> {
+
+                    List<EditorRagdollExpressions.EditorExpressionEntry> list =
+                            new ArrayList<>();
+
+                    map.forEach(
+                            (name, expression) ->
+                                    list.add(
+                                            new EditorRagdollExpressions.EditorExpressionEntry(
+                                                    name,
+                                                    EditorRagdollExpressions.EditorExpression.from(expression)
+                                            )
+                                    )
+                    );
+
+                    expressions.add(
+                            new EditorRagdollExpressions.EditorExpressionPart(
+                                    partName,
+                                    list
+                            )
+                    );
+                }
+        );
+
+
+        return new EditorDefFile(
+                defFile.type(),
+                new ArrayList<>(defFile.allParts()),
+                hitbox,
+                position,
+                renderData,
+                joints,
+                expressions,
+                defFile.mainBody().orElse(null),
+                defFile.extra()
+        );
     }
 
-    public static final ResourceLocation EMPTY = ResourceLocation.fromNamespaceAndPath(SableRagdollLib.MODID, "empty");
 
-    public static EditorDefFile createEmpty(){
+
+    public static final ResourceLocation EMPTY =
+            ResourceLocation.fromNamespaceAndPath(
+                    SableRagdollLib.MODID,
+                    "empty"
+            );
+
+
+
+    public static EditorDefFile createEmpty() {
+
         return new EditorDefFile(
-                EMPTY, List.of(),
-                new RagdollHitbox(Map.of()),
-                new RagdollPosition(Map.of()),
-                new RagdollRenderData(Map.of()),
-                new RagdollJoints(List.of()),
-                new RagdollExpressions(Map.of()),
+                EMPTY,
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
+                new ArrayList<>(),
                 null,
                 new CompoundTag()
         );
+    }
+
+    private Configurator buildHitboxConfigurator(
+            Supplier<EditorRagdollHitbox.EditorHitboxEntry> getter,
+            Consumer<EditorRagdollHitbox.EditorHitboxEntry> setter
+    ) {
+        var entry = getter.get();
+
+        return entry != null
+                ? entry.createDirectConfigurator()
+                : new Configurator();
+    }
+
+
+    private EditorRagdollHitbox.EditorHitboxEntry addDefaultHitbox() {
+
+        return new EditorRagdollHitbox.EditorHitboxEntry();
+    }
+
+    private Configurator buildPositionConfigurator(
+            Supplier<EditorRagdollPosition.EditorPositionEntry> getter,
+            Consumer<EditorRagdollPosition.EditorPositionEntry> setter
+    ) {
+        var value = getter.get();
+
+        return value != null
+                ? value.createDirectConfigurator()
+                : new Configurator();
+    }
+
+
+    private EditorRagdollPosition.EditorPositionEntry addDefaultPosition(){
+        return new EditorRagdollPosition.EditorPositionEntry();
+    }
+
+    private Configurator buildJointsConfigurator(
+            Supplier<EditorRagdollJoints.EditorJointData> getter,
+            Consumer<EditorRagdollJoints.EditorJointData> setter
+    ) {
+        var value = getter.get();
+
+        return value != null
+                ? value.createDirectConfigurator()
+                : new Configurator();
+    }
+
+
+    private EditorRagdollJoints.EditorJointData addDefaultJoints(){
+        return new EditorRagdollJoints.EditorJointData();
+    }
+
+    private Configurator buildExpressionsConfigurator(
+            Supplier<EditorRagdollExpressions.EditorExpressionPart> getter,
+            Consumer<EditorRagdollExpressions.EditorExpressionPart> setter
+    ) {
+        var value = getter.get();
+
+        return value != null
+                ? value.createDirectConfigurator()
+                : new Configurator();
+    }
+
+
+    private EditorRagdollExpressions.EditorExpressionPart addDefaultExpressions(){
+        return new EditorRagdollExpressions.EditorExpressionPart();
+    }
+
+    private Configurator buildRenderDataConfigurator(
+            Supplier<EditorRagdollRenderData.EditorRenderEntry> getter,
+            Consumer<EditorRagdollRenderData.EditorRenderEntry> setter
+    ) {
+        var value = getter.get();
+
+        return value != null
+                ? value.createDirectConfigurator()
+                : new Configurator();
+    }
+
+
+    private EditorRagdollRenderData.EditorRenderEntry addDefaultRenderData(){
+        return new EditorRagdollRenderData.EditorRenderEntry();
     }
 }

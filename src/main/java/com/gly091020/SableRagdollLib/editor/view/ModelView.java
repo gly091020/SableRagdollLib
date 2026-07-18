@@ -44,7 +44,7 @@ public class ModelView extends View {
         clear();
         setActive(false);
         if(editor.getCurrentProjectFile() == null)return;
-        var supplier = ModelSceneManager.get(project.file.getType());
+        var supplier = ModelSceneManager.get(project.file.type);
         if(supplier == null)return;
         var modelID = supplier.getModel(editor.getCurrentProjectFile().toPath());
         if(modelID == null)return;

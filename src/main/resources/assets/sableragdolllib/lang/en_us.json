@@ -8,5 +8,12 @@
   "text.sableragdolllib.ragdoll": "布娃娃",
   "entity.sableragdolllib.part_seat": "座位",
   "text.sableragdolllib.open_file": "搜索布娃娃文件……",
-  "text.sableragdolllib.open_from_dp": "从数据包中打开"
+  "text.sableragdolllib.open_from_dp": "从数据包中打开",
+  "text.sableragdolllib.mode.hitbox": "碰撞箱",
+  "text.sableragdolllib.mode.renderer": "渲染",
+  "text.sableragdolllib.mode.joint": "关节",
+  "text.sableragdolllib.mode.expression": "表情",
+  "text.sableragdolllib.view.model": "源模型预览",
+  "text.sableragdolllib.view.part_editor": "布娃娃预览",
+  "text.sableragdolllib.view.model_tree": "模型树"
 }

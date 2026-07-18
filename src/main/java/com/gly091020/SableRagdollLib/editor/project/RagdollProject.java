@@ -51,7 +51,9 @@ public class RagdollProject implements IProject {
 
     @Override
     public void onLoad(Editor editor) {
-        if(editor instanceof RagdollEditor ragdollEditor)
+        if(editor instanceof RagdollEditor ragdollEditor) {
             ragdollEditor.reloadParts();
+            ragdollEditor.initInspector();
+        }
     }
 }

@@ -102,7 +102,7 @@ public class RagdollReloadListener extends SimpleJsonResourceReloadListener {
                 JsonElement json;
                 try {
                     json = GSON.fromJson(Files.readString(path), JsonElement.class);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     LOGGER.error("读取文件时出现错误：", e);
                     return;
                 }

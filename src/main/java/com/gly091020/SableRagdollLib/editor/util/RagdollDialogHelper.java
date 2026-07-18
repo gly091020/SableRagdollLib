@@ -30,7 +30,7 @@ public class RagdollDialogHelper {
                     if(select.getValue() == null)return;
                     result.accept(ResourceLocation.parse(textField1.getText()));
                     if(project instanceof RagdollProject ragdollProject)
-                        ragdollProject.file.setType(select.getValue());
+                        ragdollProject.file.type = select.getValue();
                     dialog.close();
                 })
                 .setText("ldlib.gui.tips.confirm")

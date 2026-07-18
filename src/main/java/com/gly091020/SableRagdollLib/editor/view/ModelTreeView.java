@@ -5,7 +5,10 @@ import com.gly091020.SableRagdollLib.resource.file.RagdollRenderData;
 import com.lowdragmc.lowdraglib2.editor.ui.View;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.TreeList;
 import com.lowdragmc.lowdraglib2.gui.util.TreeNode;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.sounds.SoundEvents;
 
 import java.util.List;
 
@@ -19,7 +22,7 @@ public class ModelTreeView extends View {
         clearAllChildren();
         var editor = modelView.editor;
         if(editor.getCurrentProjectFile() == null)return;
-        var supplier = ModelSceneManager.get(modelView.editor.getRagdollProject().file.getType());
+        var supplier = ModelSceneManager.get(modelView.editor.getRagdollProject().file.type);
         if(supplier == null)return;
         var modelID = supplier.getModel(editor.getCurrentProjectFile().toPath());
         if(modelID == null)return;
@@ -44,6 +47,11 @@ public class ModelTreeView extends View {
             o.setParts(treeNodes.stream().map(
                     treeNode -> new RagdollRenderData.EveryPart(treeNode.getKey(), false)
             ).toList());
+        });
+
+        treeList.setOnDoubleClickNode(treeNode -> {
+            Minecraft.getInstance().keyboardHandler.setClipboard(treeNode.getKey());
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.EXPERIENCE_ORB_PICKUP, 1));
         });
     }
 }
