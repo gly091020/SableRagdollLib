@@ -21,6 +21,7 @@ public class SableRagdollLibCommand {
     public static void registry(CommandDispatcher<CommandSourceStack> dispatcher) {
         var root = Commands.literal(COMMAND);
 
+        root.requires(source -> source.hasPermission(2));
         root.then(Commands.literal("reload").executes(SableRagdollLibCommand::reload));
         root.then(Commands.literal("create")
                 .then(Commands.argument("id", ResourceLocationArgument.id())

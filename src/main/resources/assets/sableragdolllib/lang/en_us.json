@@ -15,5 +15,10 @@
   "text.sableragdolllib.mode.expression": "表情",
   "text.sableragdolllib.view.model": "源模型预览",
   "text.sableragdolllib.view.part_editor": "布娃娃预览",
-  "text.sableragdolllib.view.model_tree": "模型树"
+  "text.sableragdolllib.view.model_tree": "模型树",
+  "text.sableragdolllib.command.reload": "重载布娃娃文件",
+  "text.sableragdolllib.command.pause": "暂停/恢复物理引擎",
+  "text.sableragdolllib.command.debug_render": "调试渲染切换",
+  "key.sableragdolllib.open_editor": "打开编辑器",
+  "key.category.sableragdolllib": "Sable: RagdollLib"
 }

@@ -7,8 +7,11 @@ import com.gly091020.SableRagdollLib.resource.file.RagdollHitbox;
 import com.lowdragmc.lowdraglib2.editor.ui.View;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.SceneEditor;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.SceneObject;
+import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.utils.BlockModelObject;
 import com.lowdragmc.lowdraglib2.utils.virtuallevel.DummyWorld;
+import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Blocks;
 import org.joml.Vector3f;
 
 import java.util.List;
@@ -34,6 +37,17 @@ public class PartEditorView extends View {
         addChild(partEditor);
     }
 
+    public void addBlocks(){
+        BlockPos.betweenClosedStream(-1, 0, -1, 1, 0, 1).forEach(
+            pos -> {
+                var block = new BlockModelObject();
+                block.transform().position(new Vector3f(pos.getX(), pos.getY() - 0.5f, pos.getZ()));
+                block.blockState = Blocks.GRASS_BLOCK.defaultBlockState();
+                partEditor.addSceneObject(block);
+            }
+        );
+    }
+
     public void clear(){
         partEditor.getAllSceneObjects().clear();
     }
@@ -41,6 +55,7 @@ public class PartEditorView extends View {
     // ChatGPT 数学比我好多了
     public void reloadParts(RagdollProject project) {
         clear();
+        addBlocks();
         var root = new SceneObject();
         root.transform().rotate(
                 new Vector3f(0, 1, 0),

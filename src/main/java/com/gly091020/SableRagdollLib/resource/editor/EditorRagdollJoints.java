@@ -2,13 +2,14 @@ package com.gly091020.SableRagdollLib.resource.editor;
 
 import com.gly091020.SableRagdollLib.resource.file.RagdollJoints;
 import com.lowdragmc.lowdraglib2.configurator.IConfigurable;
+import com.lowdragmc.lowdraglib2.configurator.IToggleConfigurable;
 import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class EditorRagdollJoints{
 
@@ -55,7 +56,6 @@ public class EditorRagdollJoints{
         @Configurable
         public Vector3f posB;
 
-        @Nullable
         @Configurable(subConfigurable = true)
         public EditorJointSettings jointSettings;
 
@@ -64,8 +64,9 @@ public class EditorRagdollJoints{
                 String b,
                 Vector3f posA,
                 Vector3f posB,
-                @Nullable EditorJointSettings jointSettings
+                EditorJointSettings jointSettings
         ) {
+            if(jointSettings == null)jointSettings = new EditorJointSettings(false);
             this.a = a;
             this.b = b;
             this.posA = posA;
@@ -78,7 +79,7 @@ public class EditorRagdollJoints{
             this.b = "";
             this.posA = new Vector3f();
             this.posB = new Vector3f();
-            this.jointSettings = null;
+            this.jointSettings = new EditorJointSettings(false);
         }
 
         public static EditorJointData from(RagdollJoints.JointData data) {
@@ -97,7 +98,7 @@ public class EditorRagdollJoints{
                     ),
                     data.jointSettings()
                             .map(EditorJointSettings::from)
-                            .orElse(null)
+                            .orElse(new EditorJointSettings(false))
             );
         }
 
@@ -115,33 +116,34 @@ public class EditorRagdollJoints{
                             posB.y,
                             posB.z
                     ),
-                    jointSettings == null
-                            ? java.util.Optional.empty()
-                            : java.util.Optional.of(jointSettings.toJointSettings())
+                    Optional.ofNullable(jointSettings.toJointSettings())
             );
         }
     }
 
 
-    public static class EditorJointSettings implements IConfigurable {
+    public static class EditorJointSettings implements IToggleConfigurable {
+        public boolean enable = true;
+
         @Configurable
         public boolean contacts;
 
-        @Nullable
         @Configurable(subConfigurable = true)
         public EditorJointMotor jointMotor;
 
         public EditorJointSettings(
                 boolean contacts,
-                @Nullable EditorJointMotor jointMotor
+                EditorJointMotor jointMotor
         ) {
+            if(jointMotor == null)jointMotor = new EditorJointMotor(false);
             this.contacts = contacts;
             this.jointMotor = jointMotor;
         }
 
-        public EditorJointSettings() {
+        public EditorJointSettings(boolean enable) {
             this.contacts = true;
-            this.jointMotor = null;
+            this.jointMotor = new EditorJointMotor(false);
+            this.enable = enable;
         }
 
         public static EditorJointSettings from(RagdollJoints.JointSettings settings) {
@@ -149,22 +151,33 @@ public class EditorRagdollJoints{
                     settings.contacts(),
                     settings.jointMotor()
                             .map(EditorJointMotor::from)
-                            .orElse(null)
+                            .orElse(new EditorJointMotor(false))
             );
         }
 
         public RagdollJoints.JointSettings toJointSettings() {
+            if(!enable)return null;
             return new RagdollJoints.JointSettings(
                     contacts,
-                    jointMotor == null
-                            ? java.util.Optional.empty()
-                            : java.util.Optional.of(jointMotor.toJointMotor())
+                    Optional.ofNullable(jointMotor.toJointMotor())
             );
+        }
+
+        @Override
+        public boolean isEnable() {
+            return enable;
+        }
+
+        @Override
+        public void setEnable(boolean enable) {
+            this.enable = enable;
         }
     }
 
 
-    public static class EditorJointMotor implements IConfigurable {
+    public static class EditorJointMotor implements IToggleConfigurable {
+        public boolean enable = true;
+
         @Configurable
         public int stiffness;
         @Configurable
@@ -178,9 +191,10 @@ public class EditorRagdollJoints{
             this.damping = damping;
         }
 
-        public EditorJointMotor() {
+        public EditorJointMotor(boolean enable) {
             this.stiffness = 0;
             this.damping = 0;
+            this.enable = enable;
         }
 
         public static EditorJointMotor from(RagdollJoints.JointMotor motor) {
@@ -191,10 +205,21 @@ public class EditorRagdollJoints{
         }
 
         public RagdollJoints.JointMotor toJointMotor() {
+            if(!enable)return null;
             return new RagdollJoints.JointMotor(
                     stiffness,
                     damping
             );
+        }
+
+        @Override
+        public boolean isEnable() {
+            return enable;
+        }
+
+        @Override
+        public void setEnable(boolean enable) {
+            this.enable = enable;
         }
     }
 }

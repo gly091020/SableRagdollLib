@@ -6,6 +6,7 @@ import com.gly091020.SableRagdollLib.common.RagdollReloadListener;
 import com.gly091020.SableRagdollLib.common.ServerGetter;
 import com.gly091020.SableRagdollLib.editor.project.RagdollProject;
 import com.gly091020.SableRagdollLib.editor.project.RagdollProjectType;
+import com.gly091020.SableRagdollLib.editor.util.EditorCommands;
 import com.gly091020.SableRagdollLib.editor.util.EditorRenderMode;
 import com.gly091020.SableRagdollLib.editor.util.RagdollDialogHelper;
 import com.gly091020.SableRagdollLib.editor.util.RagdollFileMenu;
@@ -57,14 +58,27 @@ public class RagdollEditor extends Editor {
 
     public void initBottomBar(){
         var bar = new UIElement();
+        var barLeft = new UIElement();
+        var barRight = new UIElement();
+        barLeft.getLayout().flexDirection(FlexDirection.ROW).flex(1);
+        barRight.getLayout().flexDirection(FlexDirection.ROW_REVERSE).flex(1);
+
         bar.addClass("__view-container__");
-        bar.getLayout().height(15).flexDirection(FlexDirection.ROW_REVERSE);
+        bar.getLayout().height(15).flexDirection(FlexDirection.ROW);
+        bar.addChildren(barLeft, barRight);
 
         for (EditorRenderMode mode: EditorRenderMode.values()){
             var button = new Button();
             button.setText(mode.getName());
             button.setOnClick(event -> editorRenderMode = mode);
-            bar.addChild(button);
+            barRight.addChild(button);
+        }
+
+        for (EditorCommands editorCommands: EditorCommands.values()){
+            var button = new Button();
+            button.setText(editorCommands.getName());
+            button.setOnClick(event -> editorCommands.run(this));
+            barLeft.addChild(button);
         }
 
         addChild(bar);
