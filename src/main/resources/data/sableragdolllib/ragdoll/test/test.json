@@ -1,0 +1,288 @@
+{
+  "mainBody": "body",
+  "render": {
+    "head": {
+      "parts": [
+        {
+          "partName": "minecraft:bookshelf",
+          "flatChild": true
+        }
+      ],
+      "transform": [
+        4.0,
+        4.0,
+        4.0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    "body": {
+      "parts": [
+        {
+          "partName": "minecraft:bookshelf",
+          "flatChild": true
+        }
+      ],
+      "transform": [
+        4.0,
+        2.0,
+        6.0
+      ],
+      "scale": [
+        0.5,
+        0.75,
+        0.25
+      ]
+    },
+    "left_arm": {
+      "parts": [
+        {
+          "partName": "minecraft:bookshelf",
+          "flatChild": true
+        }
+      ],
+      "transform": [
+        6.0,
+        2.0,
+        6.0
+      ],
+      "scale": [
+        0.25,
+        0.75,
+        0.25
+      ]
+    },
+    "right_arm": {
+      "parts": [
+        {
+          "partName": "minecraft:bookshelf",
+          "flatChild": true
+        }
+      ],
+      "transform": [
+        6.0,
+        2.0,
+        6.0
+      ],
+      "scale": [
+        0.25,
+        0.75,
+        0.25
+      ]
+    },
+    "left_leg": {
+      "parts": [
+        {
+          "partName": "minecraft:bookshelf",
+          "flatChild": true
+        }
+      ],
+      "transform": [
+        6.0,
+        2.0,
+        6.0
+      ],
+      "scale": [
+        0.25,
+        0.75,
+        0.25
+      ]
+    },
+    "right_leg": {
+      "parts": [
+        {
+          "partName": "minecraft:bookshelf",
+          "flatChild": true
+        }
+      ],
+      "transform": [
+        6.0,
+        2.0,
+        6.0
+      ],
+      "scale": [
+        0.25,
+        0.75,
+        0.25
+      ]
+    }
+  },
+  "joints": [
+    {
+      "posA": [
+        0.0,
+        -4.0,
+        0.0
+      ],
+      "posB": [
+        0.0,
+        6.0,
+        0.0
+      ],
+      "A": "head",
+      "B": "body"
+    },
+    {
+      "posA": [
+        4.0,
+        4.0,
+        0.0
+      ],
+      "posB": [
+        0.0,
+        4.0,
+        0.0
+      ],
+      "A": "body",
+      "B": "left_arm"
+    },
+    {
+      "posA": [
+        -4.0,
+        4.0,
+        0.0
+      ],
+      "posB": [
+        0.0,
+        4.0,
+        0.0
+      ],
+      "A": "body",
+      "B": "right_arm"
+    },
+    {
+      "posA": [
+        -2.0,
+        -6.0,
+        0.0
+      ],
+      "posB": [
+        0.0,
+        6.0,
+        0.0
+      ],
+      "A": "body",
+      "B": "left_leg"
+    },
+    {
+      "posA": [
+        2.0,
+        -6.0,
+        0.0
+      ],
+      "posB": [
+        0.0,
+        6.0,
+        0.0
+      ],
+      "A": "body",
+      "B": "right_leg"
+    }
+  ],
+  "type": "sableragdolllib:test",
+  "allParts": [
+    "head",
+    "body",
+    "left_arm",
+    "right_arm",
+    "left_leg",
+    "right_leg"
+  ],
+  "hitbox": {
+    "head": [
+      4,
+      4,
+      4,
+      12,
+      12,
+      12
+    ],
+    "body": [
+      4,
+      2,
+      6,
+      12,
+      14,
+      10
+    ],
+    "left_arm": [
+      6,
+      2,
+      6,
+      10,
+      14,
+      10
+    ],
+    "right_arm": [
+      6,
+      2,
+      6,
+      10,
+      14,
+      10
+    ],
+    "left_leg": [
+      6,
+      2,
+      6,
+      10,
+      14,
+      10
+    ],
+    "right_leg": [
+      6,
+      2,
+      6,
+      10,
+      14,
+      10
+    ]
+  },
+  "position": {
+    "head": {
+      "transform": [
+        0.0,
+        30.5,
+        0.0
+      ]
+    },
+    "body": {
+      "transform": [
+        0.0,
+        20.0,
+        0.0
+      ]
+    },
+    "left_arm": {
+      "transform": [
+        6.5,
+        20.0,
+        0.0
+      ]
+    },
+    "right_arm": {
+      "transform": [
+        -6.5,
+        20.0,
+        0.0
+      ]
+    },
+    "left_leg": {
+      "transform": [
+        2.0,
+        7.5,
+        0.0
+      ]
+    },
+    "right_leg": {
+      "transform": [
+        -2.0,
+        7.5,
+        0.0
+      ]
+    }
+  }
+}
