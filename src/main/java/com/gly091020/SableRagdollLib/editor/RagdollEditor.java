@@ -2,6 +2,7 @@ package com.gly091020.SableRagdollLib.editor;
 
 import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.RagdollTypeRegistry;
+import com.gly091020.SableRagdollLib.common.DefFileLoader;
 import com.gly091020.SableRagdollLib.common.RagdollReloadListener;
 import com.gly091020.SableRagdollLib.common.ServerGetter;
 import com.gly091020.SableRagdollLib.editor.project.RagdollProject;
@@ -13,20 +14,27 @@ import com.gly091020.SableRagdollLib.editor.util.RagdollFileMenu;
 import com.gly091020.SableRagdollLib.editor.view.ModelTreeView;
 import com.gly091020.SableRagdollLib.editor.view.ModelView;
 import com.gly091020.SableRagdollLib.editor.view.PartEditorView;
+import com.gly091020.SableRagdollLib.resource.file.RagdollDefFile;
 import com.google.common.util.concurrent.Runnables;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
+import com.mojang.logging.LogUtils;
+import com.mojang.serialization.JsonOps;
 import dev.vfyjxf.taffy.style.FlexDirection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 
 public class RagdollEditor extends Editor {
+    public static final Logger LOGGER = LogUtils.getLogger();
     public static final ResourceLocation WINDOW_ID = ResourceLocation.fromNamespaceAndPath(SableRagdollLib.MODID, "editor");
     public RagdollFileMenu ragdollFileMenu;
 
@@ -126,8 +134,23 @@ public class RagdollEditor extends Editor {
                 closeCurrentProject(false, Runnables.doNothing());
             return;
         }
+
         var dialog = RagdollDialogHelper.createNewRagdollDialog(project, rl -> {
-            var file = RagdollReloadListener.LOCAL_DIR.resolve(rl.getNamespace()).resolve(rl.getPath() + ".json");
+            var file = RagdollReloadListener.LOCAL_DIR.resolve(rl.getFirst().getNamespace()).resolve(rl.getFirst().getPath() + ".json");
+            if(rl.getSecond() != null){
+                var d = DefFileLoader.getDefFile(rl.getSecond());
+                if(d == null)return;
+                try {
+                    Files.createDirectories(file.getParent());
+                    Files.writeString(file,
+                            RagdollProjectType.GSON.toJson(RagdollDefFile.CODEC.encodeStart(JsonOps.INSTANCE, d).getOrThrow()),
+                            StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    super.loadNewProject(RagdollProjectType.TYPE.loadProjectFromFile(file.toFile()), file.toFile());
+                    return;
+                } catch (Exception exception) {
+                    LOGGER.error("出现错误:", exception);
+                }
+            }
             super.loadNewProject(project, file.toFile());
         });
         dialog.show(getModularUI());

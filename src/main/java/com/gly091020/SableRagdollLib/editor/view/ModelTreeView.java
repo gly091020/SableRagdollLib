@@ -39,6 +39,7 @@ public class ModelTreeView extends View {
         treeList.setSupportMultipleSelection(true);
         treeList.expandNode(root);
         treeList.setSelected(List.of(), false);
+        treeList.setDoubleClickToExpand(false);
         addChild(treeList);
 
         treeList.setOnSelectedChanged(treeNodes -> {

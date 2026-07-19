@@ -44,15 +44,17 @@ public record RagdollHitbox(Map<String, PartBox> hitbox) {
 
         public VoxelShape toVoxelShape() {
             VoxelShape shape = Shapes.empty();
-            for (Box box : boxes()) {
-                shape = Shapes.or(
-                        shape,
-                        Shapes.box(
-                                box.minX(), box.minY(), box.minZ(),
-                                box.maxX(), box.maxY(), box.maxZ()
-                        )
-                );
-            }
+            try{
+                for (Box box : boxes()) {
+                    shape = Shapes.or(
+                            shape,
+                            Shapes.box(
+                                    box.minX(), box.minY(), box.minZ(),
+                                    box.maxX(), box.maxY(), box.maxZ()
+                            )
+                    );
+                }
+            }catch (IllegalArgumentException ignore){}
             if(shape.isEmpty())return Shapes.block();
             return shape;
         }

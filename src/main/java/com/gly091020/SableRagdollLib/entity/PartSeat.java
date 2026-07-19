@@ -94,6 +94,7 @@ public class PartSeat extends Entity {
             onEntity.setInvisible(true);
             onEntity.setInvulnerable(true);
         }
+        if(tickCount <= 20)return;
         if(main == null || main.isRemoved() || !this.isVehicle()){
             discard();
             if(main != null &&
