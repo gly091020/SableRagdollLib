@@ -3,6 +3,7 @@ package com.gly091020.SableRagdollLib;
 import com.gly091020.SableRagdollLib.client.renderer.PartSeatRenderer;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibClientCommand;
 import com.gly091020.SableRagdollLib.editor.EditorOpener;
+import com.gly091020.SableRagdollLib.entity.PartSeat;
 import com.gly091020.SableRagdollLib.test.TestMainClient;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.renderer.entity.EntityRenderers;
@@ -16,6 +17,7 @@ import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import org.lwjgl.glfw.GLFW;
 
 import static com.gly091020.SableRagdollLib.SableRagdollLib.PART_SEAT;
@@ -58,6 +60,11 @@ public class SableRagdollLibClient {
             while (OPEN_EDITOR.consumeClick()){
                 if(SableRagdollLib.hasLDLib()) EditorOpener.open();
             }
+        }
+
+        @SubscribeEvent
+        public static void onRenderEntity(RenderLivingEvent.Pre<?, ?> event){
+            if(event.getEntity().getVehicle() instanceof PartSeat)event.setCanceled(true);
         }
     }
 }

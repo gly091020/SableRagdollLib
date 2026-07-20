@@ -16,6 +16,8 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
@@ -73,13 +75,7 @@ public class PartSeat extends Entity {
         }
 
         if(level().isClientSide){
-            if(cameraSet)return;
-            if(Minecraft.getInstance().player != null &&
-                    onEntity instanceof Player player &&
-                    player.is(Minecraft.getInstance().player)) {
-                Minecraft.getInstance().options.setCameraType(SableCameraTypes.SUB_LEVEL_VIEW_UNLOCKED);
-                cameraSet = true;
-            }
+            handleClient();
             return;
         }
 
@@ -103,6 +99,17 @@ public class PartSeat extends Entity {
                 var rag = RagdollManager.get(partBlockEntity.getPartData().ragdollUUID());
                 if(rag != null)rag.remove();
             }
+        }
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public void handleClient(){
+        if(cameraSet)return;
+        if(Minecraft.getInstance().player != null &&
+                onEntity instanceof Player player &&
+                player.is(Minecraft.getInstance().player)) {
+            Minecraft.getInstance().options.setCameraType(SableCameraTypes.SUB_LEVEL_VIEW_UNLOCKED);
+            cameraSet = true;
         }
     }
 

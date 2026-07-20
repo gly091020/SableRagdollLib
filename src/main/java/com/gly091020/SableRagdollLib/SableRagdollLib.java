@@ -23,7 +23,6 @@ import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
-import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.PlayLevelSoundEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -99,11 +98,6 @@ public class SableRagdollLib {
         @SubscribeEvent
         public static void onAttackEntity(AttackEntityEvent event){
             if(event.getTarget().getVehicle() instanceof PartSeat)event.setCanceled(true);
-        }
-
-        @SubscribeEvent
-        public static void onRenderEntity(RenderLivingEvent.Pre<?, ?> event){
-            if(event.getEntity().getVehicle() instanceof PartSeat)event.setCanceled(true);
         }
 
         @SubscribeEvent
