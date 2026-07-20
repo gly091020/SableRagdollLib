@@ -43,7 +43,10 @@ public class SableRagdollLib {
 
     public static DeferredRegister<EntityType<?>> ENTITY_TYPES = DeferredRegister.create(Registries.ENTITY_TYPE, MODID);
     public static DeferredHolder<EntityType<?>, EntityType<PartSeat>> PART_SEAT = ENTITY_TYPES.register("part_seat", r ->
-            EntityType.Builder.of(PartSeat::new, MobCategory.MISC).sized(0.0F, 0.0F)
+            EntityType.Builder.of(PartSeat::new, MobCategory.MISC)
+                    .sized(0.0F, 0.0F)
+                    .clientTrackingRange(64)
+                    .updateInterval(1)
                     .build("part_seat")
     );
 
