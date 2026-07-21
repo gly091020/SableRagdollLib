@@ -192,3 +192,8 @@ idea {
         downloadJavadoc = true
     }
 }
+
+tasks.register('sourcesJar', Jar) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allJava
+}
