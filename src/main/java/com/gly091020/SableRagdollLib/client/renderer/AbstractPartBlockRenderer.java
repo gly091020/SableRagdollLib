@@ -25,6 +25,7 @@ public abstract class AbstractPartBlockRenderer<T extends AbstractPartBlockEntit
             renderDebug(blockEntity, poseStack, multiBufferSource);
             return;
         }
+        firstRender(blockEntity, v, poseStack, multiBufferSource, i, i1);
         poseStack.pushPose();
         transformBefore(blockEntity, poseStack);
         transformUser(blockEntity, poseStack);
@@ -43,6 +44,8 @@ public abstract class AbstractPartBlockRenderer<T extends AbstractPartBlockEntit
                 (float) Math.toRadians(rotate.z)));
         poseStack.scale((float) scale.x, (float) scale.y, (float) scale.z);
     }
+
+    public void firstRender(T blockEntity, float v, PoseStack poseStack, MultiBufferSource multiBufferSource, int i, int i1){};
 
     public abstract void renderMain(T blockEntity, float delta, PoseStack poseStack, MultiBufferSource multiBufferSource, int light, int overlay);
 

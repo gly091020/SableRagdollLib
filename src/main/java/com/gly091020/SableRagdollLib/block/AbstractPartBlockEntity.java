@@ -4,7 +4,6 @@ import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.Ragdoll;
 import com.gly091020.SableRagdollLib.api.RagdollHelper;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
-import com.gly091020.SableRagdollLib.api.RagdollTypeRegistry;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
 import com.gly091020.SableRagdollLib.resource.file.RagdollExpressions;
 import com.gly091020.SableRagdollLib.resource.file.RagdollHitbox;
@@ -19,6 +18,7 @@ import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.UUIDUtil;
@@ -29,8 +29,10 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -38,6 +40,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 import org.slf4j.Logger;
@@ -51,6 +54,9 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
     private static final Logger LOGGER = LogUtils.getLogger();
     private Data data;
     private VoxelShape shape = Shapes.block();
+
+    @Nullable
+    private UUID entityUUID;
     public AbstractPartBlockEntity(BlockEntityType<? extends AbstractPartBlockEntity> entityType,
                                    BlockPos pos, BlockState state) {
         super(entityType, pos, state);
@@ -63,6 +69,8 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
             Data.CODEC.encodeStart(NbtOps.INSTANCE, data)
                     .resultOrPartial(e -> LOGGER.error("序列化错误:{}", e))
                     .ifPresent(r -> tag.put("data", r));
+        if(entityUUID != null)
+            tag.putUUID("hasUUID", entityUUID);
     }
 
     @Override
@@ -72,6 +80,8 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
             Data.CODEC.parse(NbtOps.INSTANCE, tag.get("data"))
                     .resultOrPartial(e -> LOGGER.error("加载时错误:{}", e))
                     .ifPresent(this::setData);
+        if(tag.contains("hasUUID"))
+            entityUUID = tag.getUUID("hasUUID");
     }
 
     public void setData(Data data){
@@ -241,5 +251,44 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
             entity.setPos(localPos);
         }
         seat.rideMe(entity);
+    }
+
+    public void setEntityUUID(@Nullable UUID entityUUID) {
+        this.entityUUID = entityUUID;
+    }
+
+    public @Nullable UUID getEntityUUID() {
+        return entityUUID;
+    }
+
+    public Entity hasEntity = null;
+
+    public Entity getEntity(){
+        if(level == null)return null;
+        if(hasEntity == null && entityUUID != null){
+            hasEntity = findEntity(level, entityUUID);
+        }
+        return hasEntity;
+    }
+
+    public static Entity findEntity(Level level, UUID uuid) {
+        if (level == null || uuid == null) {
+            return null;
+        }
+        if (level instanceof ServerLevel serverLevel) {
+            return serverLevel.getEntity(uuid);
+        }
+        if (level.isClientSide) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.level == null) {
+                return null;
+            }
+            for (Entity entity : mc.level.entitiesForRendering()) {
+                if (entity.getUUID().equals(uuid)) {
+                    return entity;
+                }
+            }
+        }
+        return null;
     }
 }

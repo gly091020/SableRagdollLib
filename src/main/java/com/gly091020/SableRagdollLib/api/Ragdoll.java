@@ -123,12 +123,18 @@ public class Ragdoll {
 
     public void addEntity(Entity entity){
         var subs = getSublevels();
+        var finish = false;
         for (SubLevel subLevel: subs){
             if(!(subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity partBlockEntity))return;
             if(!partBlockEntity.getPartData().isMain())continue;
             partBlockEntity.addEntity(entity);
+            finish = true;
             break;
         }
+        if(finish)subs.forEach(subLevel -> {
+            if(!(subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity partBlockEntity))return;
+            partBlockEntity.setEntityUUID(entity.getUUID());
+        });
     }
 
     public void addLinearImpulse(Vector3d value, boolean local){
