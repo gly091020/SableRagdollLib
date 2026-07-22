@@ -1,6 +1,7 @@
 package com.gly091020.SableRagdollLib.entity;
 
 import com.gly091020.SableRagdollLib.api.RagdollManager;
+import com.gly091020.SableRagdollLib.api.ScheduleManager;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.mixinhelpers.camera.new_camera_types.SableCameraTypes;
@@ -10,6 +11,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
@@ -92,13 +94,13 @@ public class PartSeat extends Entity {
         }
         if(tickCount <= 20)return;
         if(main == null || main.isRemoved() || !this.isVehicle()){
-            discard();
             if(main != null &&
                     main.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof
                             AbstractPartBlockEntity partBlockEntity && partBlockEntity.getPartData().isMain()){
                 var rag = RagdollManager.get(partBlockEntity.getPartData().ragdollUUID());
                 if(rag != null)rag.remove();
             }
+            ScheduleManager.scheduleDelayed((ServerLevel) level(), 2, this::discard);
         }
     }
 
@@ -121,6 +123,7 @@ public class PartSeat extends Entity {
             onEntity.setSilent(oldSilent);
             onEntity.setInvulnerable(oldInvulnerable);
             onEntity.setInvisible(oldInvisible);
+            onEntity.setDeltaMovement(Vec3.ZERO);
             if(onEntity instanceof Mob mob)
                 mob.setNoAi(false);
         }
