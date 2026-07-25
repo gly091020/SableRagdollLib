@@ -141,6 +141,7 @@ public class Ragdoll {
         var container = ServerSubLevelContainer.getContainer(level);
         if(container == null)return;
         getSublevels().forEach(subLevel -> {
+            if(subLevel.isRemoved())return;
             var f = new Vector3d(value);
             if(local)subLevel.logicalPose().transformNormalInverse(f);
             container.physicsSystem().getPhysicsHandle(subLevel).applyLinearImpulse(f);
@@ -157,6 +158,7 @@ public class Ragdoll {
 
         var mainSub = container.getSubLevel(main);
         if(mainSub == null)return;
+        if(mainSub.isRemoved())return;
 
         var f = new Vector3d(value);
         if(local)mainSub.logicalPose().transformNormalInverse(f);
@@ -174,6 +176,7 @@ public class Ragdoll {
         if (container == null) return;
         var pipeline = container.physicsSystem().getPipeline();
         getSublevels().forEach(subLevel -> {
+            if(subLevel.isRemoved())return;
             var move = new Vector3d(offset);
             if (local) {
                 subLevel.logicalPose().transformNormal(move);
@@ -195,11 +198,13 @@ public class Ragdoll {
         if (container == null) return;
         var mainSub = container.getSubLevel(main);
         if (mainSub == null) return;
+        if(mainSub.isRemoved())return;
         var pipeline = container.physicsSystem().getPipeline();
         Vector3d center = new Vector3d(
                 mainSub.logicalPose().position()
         );
         getSublevels().forEach(subLevel -> {
+            if(subLevel.isRemoved())return;
             var oldPose = subLevel.logicalPose();
             Vector3d pos = new Vector3d(
                     oldPose.position()
@@ -222,5 +227,13 @@ public class Ragdoll {
     // 单位是角度制
     public void rotate(Vec3 vec3){
         rotate(new Quaterniond().rotationXYZ(Math.toRadians(vec3.x), Math.toRadians(vec3.y), Math.toRadians(vec3.z)));
+    }
+
+    public Vector3d getCenterPosition(){
+        var container = ServerSubLevelContainer.getContainer(level);
+        if(container == null)return new Vector3d();
+        var subLevel = container.getSubLevel(getCenter());
+        if(subLevel == null)return new Vector3d();
+        return subLevel.logicalPose().position();
     }
 }
