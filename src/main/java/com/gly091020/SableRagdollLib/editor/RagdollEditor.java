@@ -18,6 +18,7 @@ import com.gly091020.SableRagdollLib.resource.file.RagdollDefFile;
 import com.google.common.util.concurrent.Runnables;
 import com.lowdragmc.lowdraglib2.editor.project.IProject;
 import com.lowdragmc.lowdraglib2.editor.ui.Editor;
+import com.lowdragmc.lowdraglib2.gui.texture.SpriteTexture;
 import com.lowdragmc.lowdraglib2.gui.ui.UIElement;
 import com.lowdragmc.lowdraglib2.gui.ui.elements.Button;
 import com.mojang.logging.LogUtils;
@@ -57,6 +58,8 @@ public class RagdollEditor extends Editor {
         menuContainer.addChildren(ragdollFileMenu.createMenuTab(), viewMenu.createMenuTab());
         initRagdollEditorView();
         initBottomBar();
+
+        icon.style(style -> style.backgroundTexture(SpriteTexture.of(ResourceLocation.fromNamespaceAndPath(SableRagdollLib.MODID, "textures/icon.png"))));
     }
 
     @Override

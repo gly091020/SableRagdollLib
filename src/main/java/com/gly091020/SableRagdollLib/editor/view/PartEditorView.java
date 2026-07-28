@@ -3,13 +3,13 @@ package com.gly091020.SableRagdollLib.editor.view;
 import com.gly091020.SableRagdollLib.editor.RagdollEditor;
 import com.gly091020.SableRagdollLib.editor.project.RagdollProject;
 import com.gly091020.SableRagdollLib.editor.sceneObject.PartObject;
+import com.gly091020.SableRagdollLib.resource.editor.EditorRagdollRenderData;
 import com.gly091020.SableRagdollLib.resource.file.RagdollHitbox;
 import com.lowdragmc.lowdraglib2.editor.ui.View;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.SceneEditor;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.SceneObject;
 import com.lowdragmc.lowdraglib2.editor.ui.sceneeditor.sceneobject.utils.BlockModelObject;
 import com.lowdragmc.lowdraglib2.utils.virtuallevel.DummyWorld;
-import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Blocks;
 import org.joml.Vector3f;
@@ -74,6 +74,7 @@ public class PartEditorView extends View {
                     .map(e -> e.setting)
                     .orElse(null);
             var renderData = project.file.renderData.stream()
+                    .filter(EditorRagdollRenderData.EditorRenderEntry::isEnable)
                     .filter(e -> e.name.equals(part))
                     .findFirst()
                     .map(e -> e.data)

@@ -2,6 +2,7 @@ package com.gly091020.SableRagdollLib.resource.editor;
 
 import com.gly091020.SableRagdollLib.resource.file.RagdollRenderData;
 import com.lowdragmc.lowdraglib2.configurator.IConfigurable;
+import com.lowdragmc.lowdraglib2.configurator.IToggleConfigurable;
 import com.lowdragmc.lowdraglib2.configurator.annotation.ConfigList;
 import com.lowdragmc.lowdraglib2.configurator.annotation.Configurable;
 import com.lowdragmc.lowdraglib2.configurator.ui.Configurator;
@@ -69,7 +70,8 @@ public class EditorRagdollRenderData{
 
 
     public static class EditorRenderEntry
-            implements IConfigurable {
+            implements IToggleConfigurable {
+        private boolean enable = true;
 
         @Configurable
         public String name;
@@ -91,6 +93,16 @@ public class EditorRagdollRenderData{
         ) {
             this.name = name;
             this.data = data;
+        }
+
+        @Override
+        public boolean isEnable() {
+            return enable;
+        }
+
+        @Override
+        public void setEnable(boolean enable) {
+            this.enable = enable;
         }
     }
 
