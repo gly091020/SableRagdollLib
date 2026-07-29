@@ -5,11 +5,13 @@ import com.gly091020.SableRagdollLib.command.SableRagdollLibClientCommand;
 import com.gly091020.SableRagdollLib.editor.EditorOpener;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
 import com.gly091020.SableRagdollLib.test.TestMainClient;
+import me.shedaniel.autoconfig.AutoConfig;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
@@ -18,6 +20,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import org.lwjgl.glfw.GLFW;
 
 import static com.gly091020.SableRagdollLib.SableRagdollLib.PART_SEAT;
@@ -30,10 +33,13 @@ public class SableRagdollLibClient {
             "key.category.sableragdolllib"
     );
 
-    public SableRagdollLibClient(IEventBus bus){
+    public SableRagdollLibClient(IEventBus bus, ModContainer mc){
         if(!FMLEnvironment.production)
             TestMainClient.init(bus);
         bus.addListener(EventHandler::onClientInit);
+
+        mc.registerExtensionPoint(IConfigScreenFactory.class,
+                (mc1, p) -> AutoConfig.getConfigScreen(SableRagdollLibConfig.class, p).get());
     }
 
     @EventBusSubscriber(modid = SableRagdollLib.MODID, value = Dist.CLIENT)

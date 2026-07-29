@@ -11,6 +11,8 @@ import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
@@ -25,11 +27,14 @@ public abstract class AbstractPartBlockRenderer<T extends AbstractPartBlockEntit
             renderDebug(blockEntity, poseStack, multiBufferSource);
             return;
         }
+        var overlay = i1;
+        if(blockEntity.getEntity() instanceof LivingEntity livingEntity && livingEntity.hurtTime > 0)
+            overlay = OverlayTexture.RED_OVERLAY_V;
         firstRender(blockEntity, v, poseStack, multiBufferSource, i, i1);
         poseStack.pushPose();
         transformBefore(blockEntity, poseStack);
         transformUser(blockEntity, poseStack);
-        renderMain(blockEntity, v, poseStack, multiBufferSource, i, i1);
+        renderMain(blockEntity, v, poseStack, multiBufferSource, i, overlay);
         poseStack.popPose();
     }
 

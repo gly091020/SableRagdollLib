@@ -1,5 +1,6 @@
 package com.gly091020.SableRagdollLib.entity;
 
+import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.ScheduleManager;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
@@ -90,7 +91,8 @@ public class PartSeat extends Entity {
         if(onEntity != null){
             onEntity.setSilent(true);
             onEntity.setInvisible(true);
-            onEntity.setInvulnerable(true);
+            if(!SableRagdollLib.config.enableHurt)
+                onEntity.setInvulnerable(true);
         }
         if(tickCount <= 20)return;
         if(main == null || main.isRemoved() || !this.isVehicle()){
@@ -126,6 +128,7 @@ public class PartSeat extends Entity {
             onEntity.setDeltaMovement(Vec3.ZERO);
             if(onEntity instanceof Mob mob)
                 mob.setNoAi(false);
+            onEntity.invulnerableTime = 4;
         }
         onEntity = null;
         super.remove(reason);
@@ -148,7 +151,8 @@ public class PartSeat extends Entity {
 
         entity.setSilent(true);
         entity.setInvisible(true);
-        entity.setInvulnerable(true);
+        if(!SableRagdollLib.config.enableHurt)
+            entity.setInvulnerable(true);
         if(entity instanceof Mob mob)
             mob.setNoAi(true);
 

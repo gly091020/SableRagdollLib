@@ -1,6 +1,9 @@
 package com.gly091020.SableRagdollLib.block;
 
+import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.mojang.serialization.MapCodec;
+import dev.ryanhcode.sable.api.block.BlockWithSubLevelCollisionCallback;
+import dev.ryanhcode.sable.api.physics.callback.BlockSubLevelCollisionCallback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -16,7 +19,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
-public abstract class AbstractPartBlock extends BaseEntityBlock {
+public abstract class AbstractPartBlock extends BaseEntityBlock implements BlockWithSubLevelCollisionCallback {
     public static final Properties BASE_PROPERTIES = Properties.ofFullCopy(Blocks.WHITE_WOOL)
             .noLootTable()
             .sound(SoundType.WOOL)
@@ -65,5 +68,11 @@ public abstract class AbstractPartBlock extends BaseEntityBlock {
     @Override
     protected VoxelShape getVisualShape(BlockState p_60479_, BlockGetter p_60480_, BlockPos p_60481_, CollisionContext p_60482_) {
         return Shapes.empty();
+    }
+
+    @Override
+    public BlockSubLevelCollisionCallback sable$getCallback() {
+        if(!SableRagdollLib.config.enableHurt)return null;
+        return AbstractPartBlockCallBack.INSTANCE;
     }
 }

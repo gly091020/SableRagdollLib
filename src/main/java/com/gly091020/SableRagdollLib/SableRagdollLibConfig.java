@@ -6,4 +6,5 @@ import me.shedaniel.autoconfig.annotation.Config;
 @Config(name = SableRagdollLib.MODID)
 public class SableRagdollLibConfig implements ConfigData {
     public boolean enableForceLoad = false;
+    public boolean enableHurt = false;
 }

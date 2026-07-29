@@ -21,5 +21,9 @@
   "text.sableragdolllib.command.debug_render": "调试渲染切换",
   "key.sableragdolllib.open_editor": "打开编辑器",
   "key.category.sableragdolllib": "Sable: 布娃娃库",
-  "text.sableragdolllib.open_file.base": "基于"
+  "text.sableragdolllib.open_file.base": "基于",
+
+  "text.autoconfig.sableragdolllib.title": "物理布娃娃库 设置",
+  "text.autoconfig.sableragdolllib.option.enableForceLoad": "强制加载物理结构",
+  "text.autoconfig.sableragdolllib.option.enableHurt": "启用受伤"
 }

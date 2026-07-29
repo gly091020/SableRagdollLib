@@ -21,5 +21,9 @@
   "text.sableragdolllib.command.debug_render": "Toggle debug render",
   "key.sableragdolllib.open_editor": "Open editor",
   "key.category.sableragdolllib": "Sable: Ragdoll Library",
-  "text.sableragdolllib.open_file.base": "Based on"
+  "text.sableragdolllib.open_file.base": "Based on",
+
+  "text.autoconfig.sableragdolllib.title": "Physics Ragdoll Library Settings",
+  "text.autoconfig.sableragdolllib.option.enableForceLoad": "Force Load Physics Structures",
+  "text.autoconfig.sableragdolllib.option.enableHurt": "Enable Injury"
 }

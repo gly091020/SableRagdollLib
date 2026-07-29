@@ -13,6 +13,7 @@ import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -26,6 +27,7 @@ import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.PlayLevelSoundEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -98,6 +100,12 @@ public class SableRagdollLib {
         @SubscribeEvent
         public static void onAttackEntity(AttackEntityEvent event){
             if(event.getTarget().getVehicle() instanceof PartSeat)event.setCanceled(true);
+        }
+
+        @SubscribeEvent
+        public static void onEntityHurt(LivingDamageEvent.Pre event){
+            if(event.getEntity().getVehicle() instanceof PartSeat &&
+                    event.getSource().is(DamageTypes.IN_WALL))event.setNewDamage(0);
         }
 
         @SubscribeEvent
