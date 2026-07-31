@@ -236,4 +236,13 @@ public class Ragdoll {
         if(subLevel == null)return new Vector3d();
         return subLevel.logicalPose().position();
     }
+
+    public Entity getEntity(){
+        var container = ServerSubLevelContainer.getContainer(level);
+        if(container == null)return null;
+        var subLevel = container.getSubLevel(getCenter());
+        if(subLevel == null)return null;
+        if(!(subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity blockEntity))return null;
+        return blockEntity.getEntity();
+    }
 }

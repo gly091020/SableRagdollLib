@@ -1,5 +1,6 @@
 package com.gly091020.SableRagdollLib.api;
 
+import com.gly091020.SableRagdollLib.api.event.CreateRagdollEvent;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import com.gly091020.SableRagdollLib.common.DefFileLoader;
 import com.gly091020.SableRagdollLib.resource.file.RagdollJoints;
@@ -17,6 +18,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.common.NeoForge;
 import org.joml.Quaterniond;
 import org.joml.Vector3dc;
 
@@ -29,6 +31,12 @@ public class RagdollHelper {
     }
 
     public static Ragdoll createRagdoll(ServerLevel serverLevel, Vec3 pos, Vec3 rotation, ResourceLocation id){
+        var event = NeoForge.EVENT_BUS.post(new CreateRagdollEvent.Pre(serverLevel, pos, rotation, id));
+        if(event.isCanceled())return null;
+        pos = event.getPos();
+        rotation = event.getRotation();
+        id = event.getId();
+
         var defFile = DefFileLoader.getDefFile(id);
         if(defFile == null)return null;
         var settings = RagdollTypeRegistry.getRagdollType(defFile.type());
@@ -41,6 +49,7 @@ public class RagdollHelper {
         for (String part: defFile.allParts()){
             var data = defFile.position().position().get(part);
             if(data == null)continue;
+            ResourceLocation finalId = id;
             var s = createBlock(container, settings, blockEntity ->
             {
                 var isMain = defFile.mainBody().isPresent() && defFile.mainBody().get().equals(part);
@@ -48,7 +57,7 @@ public class RagdollHelper {
                         isMain,
                         part,
                         ragdollUUID,
-                        id, defFile.type(),
+                        finalId, defFile.type(),
                         defFile.hitbox().hitbox().get(part),
                         defFile.renderData().renderData().get(part),
                         Optional.empty(),
@@ -94,6 +103,7 @@ public class RagdollHelper {
         var r = new Ragdoll(allPart.values().stream().toList());
         RagdollManager.add(r);
         r.rotate(rotation);
+        NeoForge.EVENT_BUS.post(new CreateRagdollEvent.Post(r));
         return r;
     }
 
