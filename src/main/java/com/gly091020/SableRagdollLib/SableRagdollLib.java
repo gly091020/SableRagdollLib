@@ -1,12 +1,15 @@
 package com.gly091020.SableRagdollLib;
 
 import com.gly091020.SableRagdollLib.api.RagdollManager;
+import com.gly091020.SableRagdollLib.api.RagdollDragManager;
 import com.gly091020.SableRagdollLib.api.ScheduleManager;
+import com.gly091020.SableRagdollLib.block.AbstractPartBlock;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibCommand;
 import com.gly091020.SableRagdollLib.common.PartColliderBoxManager;
 import com.gly091020.SableRagdollLib.common.RagdollReloadListener;
 import com.gly091020.SableRagdollLib.common.ServerGetter;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
+import com.gly091020.SableRagdollLib.network.ServerboundDragRagdollPacket;
 import com.gly091020.SableRagdollLib.test.TestMain;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
@@ -31,9 +34,11 @@ import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
@@ -56,10 +61,22 @@ public class SableRagdollLib {
         if(!FMLEnvironment.production)
             TestMain.init(bus);
         ENTITY_TYPES.register(bus);
+        bus.addListener(Network::onRegisterPayloadHandlers);
     }
 
     public static boolean hasLDLib(){
         return ModList.get().isLoaded("ldlib2");
+    }
+
+    public static class Network {
+        public static void onRegisterPayloadHandlers(RegisterPayloadHandlersEvent event) {
+            var registrar = event.registrar(MODID).versioned("1");
+            registrar.playToServer(
+                    ServerboundDragRagdollPacket.TYPE,
+                    ServerboundDragRagdollPacket.STREAM_CODEC,
+                    ServerboundDragRagdollPacket::handle
+            );
+        }
     }
 
     @EventBusSubscriber(modid = MODID)
@@ -78,6 +95,7 @@ public class SableRagdollLib {
         public static void onServerStop(ServerStoppingEvent event){
             PartColliderBoxManager.reset();
             RagdollManager.reset();
+            RagdollDragManager.reset();
             ServerGetter.server = null;
         }
 
@@ -89,7 +107,21 @@ public class SableRagdollLib {
         @SubscribeEvent
         public static void onServerTick(ServerTickEvent.Post event){
             RagdollManager.tick();
+            RagdollDragManager.tick();
             ScheduleManager.tick(event.getServer());
+        }
+
+        @SubscribeEvent
+        public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event){
+            // 部件方块交给拖拽逻辑处理，阻止原版方块交互
+            if(event.getLevel().getBlockState(event.getPos()).getBlock() instanceof AbstractPartBlock)
+                event.setCanceled(true);
+        }
+
+        @SubscribeEvent
+        public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event){
+            if(event.getEntity() instanceof Player player)
+                RagdollDragManager.endDrag(player.level(), player);
         }
 
         @SubscribeEvent

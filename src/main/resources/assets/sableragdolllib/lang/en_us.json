@@ -6,6 +6,7 @@
   "command.sableragdolllib.debug_render.success": "Toggled debug render mode",
   "text.sableragdolllib.open_file.input_id": "Set ragdoll basic properties",
   "text.sableragdolllib.ragdoll": "Ragdoll",
+  "text.sableragdolllib.dragging": "Dragging",
   "entity.sableragdolllib.part_seat": "Seat",
   "text.sableragdolllib.open_file": "Search ragdoll file...",
   "text.sableragdolllib.open_from_dp": "Open from datapack",
