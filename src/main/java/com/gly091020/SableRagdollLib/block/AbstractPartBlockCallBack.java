@@ -4,6 +4,7 @@ import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.Ragdoll;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.event.RagdollCollisionEvent;
+import com.gly091020.SableRagdollLib.api.event.RagdollPartCollisionEvent;
 import dev.ryanhcode.sable.api.physics.callback.BlockSubLevelCollisionCallback;
 import dev.ryanhcode.sable.sublevel.system.SubLevelPhysicsSystem;
 import net.minecraft.core.BlockPos;
@@ -20,20 +21,26 @@ public class AbstractPartBlockCallBack implements BlockSubLevelCollisionCallback
     public CollisionResult sable$onCollision(BlockPos hitBlockPos, @Nullable BlockPos otherHitBlockPos, Vector3d impactPosition, double impactVelocity) {
         var level = SubLevelPhysicsSystem.getCurrentlySteppingSystem().getLevel();
         if(!(level.getBlockEntity(hitBlockPos) instanceof AbstractPartBlockEntity self))return CollisionResult.NONE;
+        if(NeoForge.EVENT_BUS.post(new RagdollPartCollisionEvent.Pre(hitBlockPos, otherHitBlockPos, self, impactVelocity)).isCanceled())return CollisionResult.NONE;
+
         var rag = RagdollManager.get(self);
         Ragdoll rag1 = null;
         if(otherHitBlockPos != null)
             rag1 = RagdollManager.get(level, otherHitBlockPos);
-        if(NeoForge.EVENT_BUS.post(new RagdollCollisionEvent.Pre(rag, rag1)).isCanceled())return CollisionResult.NONE;
-        if(!SableRagdollLib.config.enableHurt)return CollisionResult.NONE;
-        if(self.getEntity() != null){
-            if(otherHitBlockPos != null &&
+        if(NeoForge.EVENT_BUS.post(new RagdollCollisionEvent.Pre(rag, rag1, impactVelocity)).isCanceled())return CollisionResult.NONE;
+
+        if(SableRagdollLib.config.enableHurt && self.getEntity() != null){
+            boolean selfCollision = otherHitBlockPos != null &&
                     level.getBlockEntity(otherHitBlockPos) instanceof AbstractPartBlockEntity target &&
                     target.getEntity() != null &&
-                    target.getEntity().is(self.getEntity()))return CollisionResult.NONE;
-            hurt(level, self.getEntity(), impactVelocity);
+                    target.getEntity().is(self.getEntity());
+            if(!selfCollision){
+                hurt(level, self.getEntity(), impactVelocity);
+            }
         }
-        NeoForge.EVENT_BUS.post(new RagdollCollisionEvent.Post(rag, rag1));
+
+        NeoForge.EVENT_BUS.post(new RagdollPartCollisionEvent.Post(hitBlockPos, otherHitBlockPos, self, impactVelocity));
+        NeoForge.EVENT_BUS.post(new RagdollCollisionEvent.Post(rag, rag1, impactVelocity));
         return CollisionResult.NONE;
     }
 

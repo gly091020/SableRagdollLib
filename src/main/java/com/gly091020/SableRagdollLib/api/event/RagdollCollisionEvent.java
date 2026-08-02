@@ -10,9 +10,12 @@ public abstract class RagdollCollisionEvent extends Event {
     @Nullable
     private final Ragdoll target;
 
-    public RagdollCollisionEvent(Ragdoll self, @Nullable Ragdoll target){
+    private final double impactVelocity;
+
+    public RagdollCollisionEvent(Ragdoll self, @Nullable Ragdoll target, double impactVelocity){
         this.self = self;
         this.target = target;
+        this.impactVelocity = impactVelocity;
     }
 
     public Ragdoll getSelf() {
@@ -23,15 +26,19 @@ public abstract class RagdollCollisionEvent extends Event {
         return target;
     }
 
+    public double getImpactVelocity() {
+        return impactVelocity;
+    }
+
     public static class Pre extends RagdollCollisionEvent implements ICancellableEvent{
-        public Pre(Ragdoll self, @Nullable Ragdoll target) {
-            super(self, target);
+        public Pre(Ragdoll self, @Nullable Ragdoll target, double impactVelocity) {
+            super(self, target, impactVelocity);
         }
     }
 
     public static class Post extends RagdollCollisionEvent{
-        public Post(Ragdoll self, @Nullable Ragdoll target) {
-            super(self, target);
+        public Post(Ragdoll self, @Nullable Ragdoll target, double impactVelocity) {
+            super(self, target, impactVelocity);
         }
     }
 }
