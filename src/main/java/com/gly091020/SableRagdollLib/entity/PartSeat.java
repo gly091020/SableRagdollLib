@@ -35,6 +35,14 @@ public class PartSeat extends Entity {
 
     private Entity onEntity;
     private boolean cameraSet = false;
+
+    /**
+     * 玩家乘客的 UUID，仅在从存档读取时设置。
+     * 玩家不会像普通实体一样被写进载具的 Passengers（否则加载时会生成幽灵 Player），
+     * 所以单独存 UUID，等玩家上线后重新挂载。
+     */
+    private UUID pendingPassengerUUID;
+
     public PartSeat(EntityType<PartSeat> type, Level level) {
         super(type, level);
     }
@@ -59,6 +67,8 @@ public class PartSeat extends Entity {
             oldInvulnerable = compoundTag.getBoolean("invulnerable");
         if(compoundTag.contains("main"))
             mainUUID = compoundTag.getUUID("main");
+        if(compoundTag.hasUUID("passenger"))
+            pendingPassengerUUID = compoundTag.getUUID("passenger");
     }
 
     @Override
@@ -68,6 +78,46 @@ public class PartSeat extends Entity {
         compoundTag.putBoolean("invulnerable", oldInvulnerable);
         if (mainUUID != null)
             compoundTag.putUUID("main", mainUUID);
+        Entity passenger = onEntity != null ? onEntity : this.getFirstPassenger();
+        if(passenger instanceof Player)
+            compoundTag.putUUID("passenger", passenger.getUUID());
+    }
+
+    @Override
+    public @NotNull CompoundTag saveWithoutId(@NotNull CompoundTag compoundTag) {
+        CompoundTag saved = super.saveWithoutId(compoundTag);
+        // 玩家乘客不能写进 Passengers，否则 chunk 加载时会创建一个幽灵 Player 实体。
+        // 乘客 UUID 已在 addAdditionalSaveData 中单独保存。
+        Entity passenger = onEntity != null ? onEntity : this.getFirstPassenger();
+        if(passenger instanceof Player)
+            saved.remove("Passengers");
+        return saved;
+    }
+
+    /**
+     * 原版对"恰好一个玩家乘客的载具"返回 false，导致被玩家乘坐的 PartSeat 在存档时被跳过；
+     * 且玩家下线时 {@link net.minecraft.server.players.PlayerList#remove} 会因此把载具
+     * setRemoved(UNLOADED_WITH_PLAYER) 并从世界移除，座位连保存的机会都没有。
+     * 座位必须随存档保留，才能在重进存档时恢复乘坐，因此这里总是返回 true。
+     */
+    @Override
+    public boolean shouldBeSaved() {
+        return true;
+    }
+
+    /**
+     * 玩家下线时 {@link net.minecraft.server.players.PlayerList#remove} 会检查根载具的
+     * hasExactlyOnePlayerPassenger()，为 true 就把载具及乘客全部 setRemoved(UNLOADED_WITH_PLAYER)
+     * （shouldSave=false），座位会从实体 section 中被移除而无法写入存档。
+     * 这里始终返回 false 以阻止该清理，让座位保留在世界上并随存档保存。
+     * <p>
+     * 这个坑踩了 gly 整整一个晚上：原版"玩家坐过的载具不让存档"的机制有两层，第一层是 shouldBeSaved
+     * 过滤，第二层是下线时直接把载具从世界上摘走。只修第一层，存档里就只有一坨被清空的空气。
+     * 现在两层都堵上了，重进存档还能坐在布娃娃上，奖励 deepseek 一个🍡。
+     */
+    @Override
+    public boolean hasExactlyOnePlayerPassenger() {
+        return false;
     }
 
     @Override
@@ -75,6 +125,10 @@ public class PartSeat extends Entity {
         Entity passenger = this.getFirstPassenger();
         if (passenger != null && passenger != onEntity) {
             onEntity = passenger;
+        }
+        // 乘客已就位（例如被其它机制恢复），不再等待恢复
+        if (passenger != null && passenger.getUUID().equals(pendingPassengerUUID)) {
+            pendingPassengerUUID = null;
         }
 
         if(level().isClientSide){
@@ -95,7 +149,18 @@ public class PartSeat extends Entity {
                 onEntity.setInvulnerable(true);
         }
         if(tickCount <= 20)return;
-        if(main == null || main.isRemoved() || !this.isVehicle()){
+
+        boolean waitingPassenger = pendingPassengerUUID != null && !this.isVehicle();
+        if(waitingPassenger && main != null && !main.isRemoved()){
+            var entity = ((ServerLevel) level()).getEntity(pendingPassengerUUID);
+            if(entity instanceof Player player && player.isAlive() && player.getVehicle() == null){
+                rideMe(player);
+                pendingPassengerUUID = null;
+                waitingPassenger = false;
+            }
+        }
+
+        if(!waitingPassenger && (main == null || main.isRemoved() || !this.isVehicle())){
             if(main != null &&
                     main.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof
                             AbstractPartBlockEntity partBlockEntity && partBlockEntity.getPartData().isMain()){

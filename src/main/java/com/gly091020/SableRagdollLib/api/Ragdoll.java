@@ -134,6 +134,7 @@ public class Ragdoll {
         if(finish)subs.forEach(subLevel -> {
             if(!(subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity partBlockEntity))return;
             partBlockEntity.setEntityUUID(entity.getUUID());
+            partBlockEntity.setChanged();
         });
     }
 

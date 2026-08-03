@@ -287,6 +287,9 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
                 if (entity.getUUID().equals(uuid)) {
                     return entity;
                 }
+                if(entity instanceof PartSeat && entity.getFirstPassenger() != null &&
+                        entity.getFirstPassenger().getUUID().equals(uuid))
+                    return entity;
             }
         }
         return null;
