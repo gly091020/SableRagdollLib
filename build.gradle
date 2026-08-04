@@ -3,6 +3,7 @@ plugins {
     id 'maven-publish'
     id 'idea'
     id 'net.neoforged.moddev' version '2.0.141'
+    id("me.modmuss50.mod-publish-plugin") version "2.2.0"
 }
 
 version = mod_version
@@ -175,11 +176,17 @@ sourceSets.main.resources.srcDir generateModMetadata
 // To avoid having to run "generateModMetadata" manually, make it run on every project reload
 neoForge.ideSyncTask generateModMetadata
 
+tasks.register('sourcesJar', Jar) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allJava
+}
+
 // Example configuration to allow publishing using the maven-publish plugin
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
             from components.java
+            artifact(sourcesJar)
         }
     }
     repositories {
@@ -197,7 +204,32 @@ idea {
     }
 }
 
-tasks.register('sourcesJar', Jar) {
-    archiveClassifier = 'sources'
-    from sourceSets.main.allJava
+// 自动发布到 CurseForge 与 Modrinth，token 从环境变量读取（不要在仓库里提交 token）
+publishMods {
+    file = jar.archiveFile
+    changelog = "${mod_name} ${mod_version}"
+    // 正式版改成 STABLE，测试版用 ALPHA / BETA
+    type = ALPHA
+    modLoaders.add("neoforge")
+    displayName = "${mod_name} ${mod_version}"
+    version = mod_version
+
+    curseforge {
+        accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
+        projectId = curseforge_project_id
+        minecraftVersions.add(minecraft_version)
+        // 附带上传 sources jar
+        additionalFile(sourcesJar) {
+            name = "Sources"
+        }
+    }
+    modrinth {
+        accessToken = providers.environmentVariable("MODRINTH_TOKEN")
+        projectId = modrinth_project_id
+        minecraftVersions.add(minecraft_version)
+        // 附带上传 sources jar，并标记为源码包
+        additionalFile(sourcesJar) {
+            type = SOURCES_JAR
+        }
+    }
 }

@@ -1,0 +1,46 @@
+name: One-Click GitHub Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（不含 v 前缀），例如 1.0.0'
+        required: true
+      prerelease:
+        description: '标记为预发布（Prerelease）'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build mod jar
+        run: |
+          chmod +x gradlew
+          ./gradlew build sourcesJar -Pmod_version=${{ inputs.version }} --stacktrace
+
+      - name: Create tag
+        run: |
+          git tag "v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
+
+      - name: Create GitHub Release
+        run: |
+          gh release create "v${{ inputs.version }}" build/libs/*.jar \
+            --generate-notes \
+            --prerelease="${{ inputs.prerelease }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
