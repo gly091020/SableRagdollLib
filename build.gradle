@@ -218,6 +218,8 @@ publishMods {
         accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
         projectId = curseforge_project_id
         minecraftVersions.add(minecraft_version)
+        client = true
+        server = true
         // 附带上传 sources jar
         additionalFile(sourcesJar) {
             name = "Sources"
