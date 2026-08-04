@@ -11,9 +11,11 @@ import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Quaterniond;
 import org.joml.Quaterniondc;
 import org.joml.Vector3d;
@@ -245,5 +247,16 @@ public class Ragdoll {
         if(subLevel == null)return null;
         if(!(subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity blockEntity))return null;
         return blockEntity.getEntity();
+    }
+
+    @NotNull
+    public CompoundTag getExtraData(){
+        var container = ServerSubLevelContainer.getContainer(level);
+        if (container == null) return new CompoundTag();
+        var mainSub = (ServerSubLevel)container.getSubLevel(main);
+        if (mainSub == null) return new CompoundTag();
+        if(mainSub.isRemoved())return new CompoundTag();
+        if(mainSub.getUserDataTag() == null)mainSub.setUserDataTag(new CompoundTag());
+        return mainSub.getUserDataTag();
     }
 }

@@ -137,7 +137,7 @@ public class SableRagdollLib {
         @SubscribeEvent
         public static void onEntityHurt(LivingDamageEvent.Pre event){
             if(event.getEntity().getVehicle() instanceof PartSeat){
-                if(SableRagdollLib.config.enableHurt || event.getSource().is(DamageTypes.IN_WALL))
+                if(!SableRagdollLib.config.enableHurt || event.getSource().is(DamageTypes.IN_WALL))
                     event.setNewDamage(0);
             }
         }
