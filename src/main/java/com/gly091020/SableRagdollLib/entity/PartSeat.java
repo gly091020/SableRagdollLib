@@ -10,12 +10,13 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -29,9 +30,6 @@ public class PartSeat extends Entity {
     private SubLevel main;
 
     private UUID mainUUID;
-    private boolean oldSilent = false;
-    private boolean oldInvisible = false;
-    private boolean oldInvulnerable = false;
 
     private Entity onEntity;
     private boolean cameraSet = false;
@@ -59,12 +57,6 @@ public class PartSeat extends Entity {
 
     @Override
     protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
-        if(compoundTag.contains("silent", Tag.TAG_BYTE))
-            oldSilent = compoundTag.getBoolean("silent");
-        if(compoundTag.contains("invisible", Tag.TAG_BYTE))
-            oldInvisible = compoundTag.getBoolean("invisible");
-        if(compoundTag.contains("invulnerable", Tag.TAG_BYTE))
-            oldInvulnerable = compoundTag.getBoolean("invulnerable");
         if(compoundTag.contains("main"))
             mainUUID = compoundTag.getUUID("main");
         if(compoundTag.hasUUID("passenger"))
@@ -73,9 +65,6 @@ public class PartSeat extends Entity {
 
     @Override
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
-        compoundTag.putBoolean("silent", oldSilent);
-        compoundTag.putBoolean("invisible", oldInvisible);
-        compoundTag.putBoolean("invulnerable", oldInvulnerable);
         if (mainUUID != null)
             compoundTag.putUUID("main", mainUUID);
         Entity passenger = onEntity != null ? onEntity : this.getFirstPassenger();
@@ -187,13 +176,11 @@ public class PartSeat extends Entity {
         if(!reason.shouldDestroy())return;
         ejectPassengers();
         if(onEntity != null && onEntity.isAlive()){
-            onEntity.setSilent(oldSilent);
-            onEntity.setInvulnerable(oldInvulnerable);
-            onEntity.setInvisible(oldInvisible);
             onEntity.setDeltaMovement(Vec3.ZERO);
-            if(onEntity instanceof Mob mob)
-                mob.setNoAi(false);
-            onEntity.invulnerableTime = 4;
+            if(onEntity instanceof LivingEntity livingEntity)
+                livingEntity.addEffect(new MobEffectInstance(
+                        MobEffects.DAMAGE_RESISTANCE, 10, 255, false, false, false
+                ));
         }
         onEntity = null;
         super.remove(reason);
@@ -210,17 +197,6 @@ public class PartSeat extends Entity {
     }
 
     public void rideMe(Entity entity){
-        oldInvisible = entity.isInvisible();
-        oldSilent = entity.isSilent();
-        oldInvulnerable = entity.isInvulnerable();
-
-        entity.setSilent(true);
-        entity.setInvisible(true);
-        if(!SableRagdollLib.config.enableHurt)
-            entity.setInvulnerable(true);
-        if(entity instanceof Mob mob)
-            mob.setNoAi(true);
-
         entity.startRiding(this, true);
         onEntity = entity;
     }

@@ -26,6 +26,7 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import org.lwjgl.glfw.GLFW;
 
 import static com.gly091020.SableRagdollLib.SableRagdollLib.PART_SEAT;
@@ -88,6 +89,11 @@ public class SableRagdollLibClient {
             int x = (mc.getWindow().getGuiScaledWidth() - mc.font.width(component)) / 2;
             int y = mc.getWindow().getGuiScaledHeight() - 70;
             event.getGuiGraphics().drawString(mc.font, component, x, y, 0xFFFFFF, true);
+        }
+
+        @SubscribeEvent
+        public static void onInteractBlock(PlayerInteractEvent.LeftClickBlock event){
+            if(RagdollDragClient.isDragging())event.setCanceled(true);
         }
     }
 }
