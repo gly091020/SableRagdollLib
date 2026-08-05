@@ -1,6 +1,5 @@
 package com.gly091020.SableRagdollLib.entity;
 
-import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.ScheduleManager;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
@@ -130,12 +129,6 @@ public class PartSeat extends Entity {
             if(container != null){
                 main = container.getSubLevel(mainUUID);
             }
-        }
-        if(onEntity != null){
-            onEntity.setSilent(true);
-            onEntity.setInvisible(true);
-            if(!SableRagdollLib.config.enableHurt)
-                onEntity.setInvulnerable(true);
         }
         if(tickCount <= 20)return;
 

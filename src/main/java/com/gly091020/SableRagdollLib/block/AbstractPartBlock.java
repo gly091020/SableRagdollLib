@@ -72,7 +72,6 @@ public abstract class AbstractPartBlock extends BaseEntityBlock implements Block
 
     @Override
     public BlockSubLevelCollisionCallback sable$getCallback() {
-        if(!SableRagdollLib.config.enableHurt)return null;
         return AbstractPartBlockCallBack.INSTANCE;
     }
 }
