@@ -1,7 +1,7 @@
 package com.gly091020.SableRagdollLib;
 
-import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.RagdollDragManager;
+import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.ScheduleManager;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlock;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibCommand;
@@ -30,11 +30,11 @@ import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.PlayLevelSoundEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -135,10 +135,10 @@ public class SableRagdollLib {
         }
 
         @SubscribeEvent
-        public static void onEntityHurt(LivingDamageEvent.Pre event){
+        public static void onEntityHurt(LivingIncomingDamageEvent event){
             if(event.getEntity().getVehicle() instanceof PartSeat){
                 if(!SableRagdollLib.config.enableHurt || event.getSource().is(DamageTypes.IN_WALL))
-                    event.setNewDamage(0);
+                    event.setCanceled(true);
             }
         }
 
