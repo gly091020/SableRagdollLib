@@ -6,6 +6,7 @@ import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +20,7 @@ public class RagdollManager {
         RAGDOLLS.put(ragdoll.getUuid(), ragdoll);
     }
 
+    @Nullable
     public static Ragdoll get(UUID uuid){
         return RAGDOLLS.get(uuid);
     }
@@ -35,22 +37,26 @@ public class RagdollManager {
         RAGDOLLS.clear();
     }
 
+    @Nullable
     public static Ragdoll get(AbstractPartBlockEntity blockEntity){
         return get(blockEntity.getPartData().ragdollUUID());
     }
 
+    @Nullable
     public static Ragdoll get(SubLevel subLevel){
         if(!(subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity blockEntity))
             return null;
         return get(blockEntity);
     }
 
+    @Nullable
     public static Ragdoll get(Level level, BlockPos blockPos){
         var subLevel = (SubLevel) SableCompanion.INSTANCE.getContaining(level, blockPos);
         if(subLevel == null)return null;
         return get(subLevel);
     }
 
+    @Nullable
     public static Ragdoll get(Level level, UUID subLevelUUID){
         var c = SubLevelContainer.getContainer(level);
         if(c == null)return null;
