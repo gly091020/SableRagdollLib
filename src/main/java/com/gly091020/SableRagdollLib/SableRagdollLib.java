@@ -1,6 +1,8 @@
 package com.gly091020.SableRagdollLib;
 
 import com.gly091020.SableRagdollLib.api.RagdollDragManager;
+import com.gly091020.SableRagdollLib.api.control.RagdollControlManager;
+import com.gly091020.SableRagdollLib.api.control.RagdollPartRecognizerRegistry;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.ScheduleManager;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlock;
@@ -9,7 +11,9 @@ import com.gly091020.SableRagdollLib.common.PartColliderBoxManager;
 import com.gly091020.SableRagdollLib.common.RagdollReloadListener;
 import com.gly091020.SableRagdollLib.common.ServerGetter;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
+import com.gly091020.SableRagdollLib.network.ClientboundRagdollControlPacket;
 import com.gly091020.SableRagdollLib.network.ServerboundDragRagdollPacket;
+import com.gly091020.SableRagdollLib.network.ServerboundRagdollControlInputPacket;
 import com.gly091020.SableRagdollLib.test.TestMain;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
@@ -72,10 +76,20 @@ public class SableRagdollLib {
         public static void onRegisterPayloadHandlers(RegisterPayloadHandlersEvent event) {
             var registrar = event.registrar(MODID).versioned("1");
             registrar.playToServer(
-                    ServerboundDragRagdollPacket.TYPE,
-                    ServerboundDragRagdollPacket.STREAM_CODEC,
-                    ServerboundDragRagdollPacket::handle
-            );
+                ServerboundDragRagdollPacket.TYPE,
+                ServerboundDragRagdollPacket.STREAM_CODEC,
+                ServerboundDragRagdollPacket::handle
+        );
+        registrar.playToClient(
+                ClientboundRagdollControlPacket.TYPE,
+                ClientboundRagdollControlPacket.STREAM_CODEC,
+                ClientboundRagdollControlPacket::handle
+        );
+        registrar.playToServer(
+                ServerboundRagdollControlInputPacket.TYPE,
+                ServerboundRagdollControlInputPacket.STREAM_CODEC,
+                ServerboundRagdollControlInputPacket::handle
+        );
         }
     }
 
@@ -95,7 +109,9 @@ public class SableRagdollLib {
         public static void onServerStop(ServerStoppingEvent event){
             PartColliderBoxManager.reset();
             RagdollManager.reset();
+            RagdollPartRecognizerRegistry.clear();
             RagdollDragManager.reset();
+            RagdollControlManager.reset();
             ServerGetter.server = null;
         }
 
@@ -108,6 +124,7 @@ public class SableRagdollLib {
         public static void onServerTick(ServerTickEvent.Post event){
             RagdollManager.tick();
             RagdollDragManager.tick();
+            RagdollControlManager.tick();
             ScheduleManager.tick(event.getServer());
         }
 
@@ -120,8 +137,10 @@ public class SableRagdollLib {
 
         @SubscribeEvent
         public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event){
-            if(event.getEntity() instanceof Player player)
+            if(event.getEntity() instanceof Player player){
                 RagdollDragManager.endDrag(player.level(), player);
+                RagdollControlManager.stop(player);
+            }
         }
 
         @SubscribeEvent

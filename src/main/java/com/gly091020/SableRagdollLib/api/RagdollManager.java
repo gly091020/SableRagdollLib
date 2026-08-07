@@ -33,6 +33,11 @@ public class RagdollManager {
         removes.forEach(RAGDOLLS::remove);
     }
 
+    /** 当前已注册的全部布娃娃（含已失效的，调用方自行过滤）。 */
+    public static ArrayList<Ragdoll> getAll(){
+        return new ArrayList<>(RAGDOLLS.values());
+    }
+
     public static void reset(){
         RAGDOLLS.clear();
     }

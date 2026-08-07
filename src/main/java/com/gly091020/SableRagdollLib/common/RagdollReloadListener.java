@@ -1,6 +1,7 @@
 package com.gly091020.SableRagdollLib.common;
 
 import com.gly091020.SableRagdollLib.SableRagdollLib;
+import com.gly091020.SableRagdollLib.api.control.RagdollPartRecognizerRegistry;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibCommand;
 import com.gly091020.SableRagdollLib.resource.file.RagdollDefFile;
 import com.google.gson.Gson;
@@ -33,6 +34,7 @@ public class RagdollReloadListener extends SimpleJsonResourceReloadListener {
         profilerFiller.push("load_ragdoll");
 
         DefFileLoader.clear();
+        RagdollPartRecognizerRegistry.clear();
         resourceLocationJsonElementMap.forEach(((resourceLocation, jsonElement) ->
                 RagdollDefFile.CODEC.parse(JsonOps.INSTANCE, jsonElement)
                 .resultOrPartial(e -> LOGGER.error("读取文件时出现错误：{}", e))
@@ -45,6 +47,7 @@ public class RagdollReloadListener extends SimpleJsonResourceReloadListener {
 
     public static void reload(ResourceManager resourceManager){
         DefFileLoader.clear();
+        RagdollPartRecognizerRegistry.clear();
         resourceManager.listResources("ragdoll", r -> r.getPath().endsWith(".json")).forEach(
                 (resourceLocation, resource) -> {
                     try (Reader reader = resource.openAsReader()) {

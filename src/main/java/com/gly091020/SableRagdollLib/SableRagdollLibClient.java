@@ -1,5 +1,6 @@
 package com.gly091020.SableRagdollLib;
 
+import com.gly091020.SableRagdollLib.client.RagdollControlClient;
 import com.gly091020.SableRagdollLib.client.RagdollDragClient;
 import com.gly091020.SableRagdollLib.client.renderer.PartSeatRenderer;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibClientCommand;
@@ -68,6 +69,12 @@ public class SableRagdollLibClient {
                 if(SableRagdollLib.hasLDLib()) EditorOpener.open();
             }
             RagdollDragClient.tick();
+            RagdollControlClient.tick();
+        }
+
+        @SubscribeEvent
+        public static void onMovementInput(MovementInputUpdateEvent event){
+            RagdollControlClient.handleMovementInput(event);
         }
 
         @SubscribeEvent
@@ -77,9 +84,16 @@ public class SableRagdollLibClient {
 
         @SubscribeEvent
         public static void onRenderGui(RenderGuiEvent.Post event){
+            var mc = Minecraft.getInstance();
+            // 木偶控制时显示提示
+            if(RagdollControlClient.isControlling()){
+                var controlText = Component.translatable("text.sableragdolllib.controlling");
+                int cx = (mc.getWindow().getGuiScaledWidth() - mc.font.width(controlText)) / 2;
+                int cy = mc.getWindow().getGuiScaledHeight() - 90;
+                event.getGuiGraphics().drawString(mc.font, controlText, cx, cy, 0xFFFFFF, true);
+            }
             // 拖动布娃娃时在 HUD 上方显示提示
             if(!RagdollDragClient.isDragging())return;
-            var mc = Minecraft.getInstance();
             var component = Component.translatable("text.sableragdolllib.dragging");
             int x = (mc.getWindow().getGuiScaledWidth() - mc.font.width(component)) / 2;
             int y = mc.getWindow().getGuiScaledHeight() - 70;
