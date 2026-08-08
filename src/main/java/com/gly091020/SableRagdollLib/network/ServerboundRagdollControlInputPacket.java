@@ -14,9 +14,10 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * <p>
  * 客户端在控制期间每 tick 发送一次；moveX/moveZ 为世界坐标下的水平方向
  * （由 WASD 与玩家朝向换算，未归一化），moving 表示是否在按移动键，
- * yaw 为玩家摄像机朝向（世界角度，度），用于让布娃娃面向玩家。
+ * yaw 为玩家摄像机朝向（世界角度，度），用于让布娃娃面向玩家，
+ * jumping 为空格键状态（服务端按上升沿触发跳跃，按住不会连跳）。
  */
-public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boolean moving, float yaw) implements CustomPacketPayload {
+public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boolean moving, float yaw, boolean jumping) implements CustomPacketPayload {
 
     public static final Type<ServerboundRagdollControlInputPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(SableRagdollLib.MODID, "ragdoll_control_input"));
@@ -34,10 +35,11 @@ public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boo
         buf.writeFloat(packet.moveZ());
         buf.writeBoolean(packet.moving());
         buf.writeFloat(packet.yaw());
+        buf.writeBoolean(packet.jumping());
     }
 
     private static ServerboundRagdollControlInputPacket decode(FriendlyByteBuf buf) {
-        return new ServerboundRagdollControlInputPacket(buf.readFloat(), buf.readFloat(), buf.readBoolean(), buf.readFloat());
+        return new ServerboundRagdollControlInputPacket(buf.readFloat(), buf.readFloat(), buf.readBoolean(), buf.readFloat(), buf.readBoolean());
     }
 
     public void handle(IPayloadContext context) {
@@ -48,7 +50,7 @@ public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boo
         context.enqueueWork(() -> {
             var session = RagdollControlManager.get(player);
             if (session != null) {
-                session.updateInput(moveX(), moveZ(), moving(), yaw());
+                session.updateInput(moveX(), moveZ(), moving(), yaw(), jumping());
             }
         });
     }

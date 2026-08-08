@@ -11,7 +11,7 @@ import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
  * <ul>
  *     <li>控制期间在 {@link MovementInputUpdateEvent} 中把 WASD 换算成世界方向并记录，
  *     然后清空玩家输入，冻结玩家自身移动；</li>
- *     <li>每 tick 把记录到的输入通过
+ *     <li>每 tick 把记录到的输入（含跳跃键状态）通过
  *     {@link ServerboundRagdollControlInputPacket} 发给服务端驱动布娃娃。</li>
  * </ul>
  */
@@ -20,6 +20,7 @@ public class RagdollControlClient {
     private static float moveX;
     private static float moveZ;
     private static boolean moving;
+    private static boolean jumping;
 
     private RagdollControlClient() {
     }
@@ -34,6 +35,7 @@ public class RagdollControlClient {
             moveX = 0;
             moveZ = 0;
             moving = false;
+            jumping = false;
         }
     }
 
@@ -53,6 +55,7 @@ public class RagdollControlClient {
         moveX = (float) (input.forwardImpulse * forwardX + input.leftImpulse * strafeX);
         moveZ = (float) (input.forwardImpulse * forwardZ + input.leftImpulse * strafeZ);
         moving = input.forwardImpulse != 0.0F || input.leftImpulse != 0.0F;
+        jumping = input.jumping;
 
         // 冻结玩家自身移动：清空移动输入与跳跃
         input.forwardImpulse = 0.0F;
@@ -75,6 +78,6 @@ public class RagdollControlClient {
             return;
         }
         mc.getConnection().send(new ServerboundCustomPayloadPacket(
-                new ServerboundRagdollControlInputPacket(moveX, moveZ, moving, mc.player.getYRot())));
+                new ServerboundRagdollControlInputPacket(moveX, moveZ, moving, mc.player.getYRot(), jumping)));
     }
 }
