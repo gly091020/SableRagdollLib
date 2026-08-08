@@ -1,6 +1,7 @@
 package com.gly091020.SableRagdollLib;
 
 import com.gly091020.SableRagdollLib.client.RagdollControlClient;
+import com.gly091020.SableRagdollLib.client.RagdollGrabRayRenderer;
 import com.gly091020.SableRagdollLib.client.RagdollDragClient;
 import com.gly091020.SableRagdollLib.client.renderer.PartSeatRenderer;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibClientCommand;
@@ -34,6 +35,12 @@ public class SableRagdollLibClient {
             GLFW.GLFW_KEY_UNKNOWN,
             "key.category.sableragdolllib"
     );
+    /** 木偶模式抓取键：按下后让布娃娃的手向前伸并抓住视线方向上的方块/物理结构，再按一次取消 */
+    public static final KeyMapping GRAB = new KeyMapping(
+            "key.sableragdolllib.grab",
+            GLFW.GLFW_KEY_LEFT_ALT,
+            "key.category.sableragdolllib"
+    );
 
     public SableRagdollLibClient(IEventBus bus, ModContainer mc){
         if(!FMLEnvironment.production)
@@ -61,6 +68,7 @@ public class SableRagdollLibClient {
         @SubscribeEvent
         public static void onRegistryKey(RegisterKeyMappingsEvent event){
             event.register(OPEN_EDITOR);
+            event.register(GRAB);
         }
 
         @SubscribeEvent
@@ -75,6 +83,12 @@ public class SableRagdollLibClient {
         @SubscribeEvent
         public static void onMovementInput(MovementInputUpdateEvent event){
             RagdollControlClient.handleMovementInput(event);
+        }
+
+        @SubscribeEvent
+        public static void onRenderLevel(RenderLevelStageEvent event){
+            if(event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS)return;
+            RagdollGrabRayRenderer.render(event.getPoseStack(), Minecraft.getInstance().renderBuffers().bufferSource(), event.getCamera().getPosition());
         }
 
         @SubscribeEvent

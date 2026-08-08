@@ -1,5 +1,7 @@
 package com.gly091020.SableRagdollLib.client;
 
+import com.gly091020.SableRagdollLib.SableRagdollLibClient;
+import com.gly091020.SableRagdollLib.client.RagdollGrabRayRenderer;
 import com.gly091020.SableRagdollLib.network.ServerboundRagdollControlInputPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.Input;
@@ -11,7 +13,7 @@ import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
  * <ul>
  *     <li>控制期间在 {@link MovementInputUpdateEvent} 中把 WASD 换算成世界方向并记录，
  *     然后清空玩家输入，冻结玩家自身移动；</li>
- *     <li>每 tick 把记录到的输入（含跳跃键状态）通过
+ *     <li>每 tick 把记录到的输入（含跳跃键状态、抓取键状态、摄像机 yaw/pitch）通过
  *     {@link ServerboundRagdollControlInputPacket} 发给服务端驱动布娃娃。</li>
  * </ul>
  */
@@ -21,6 +23,7 @@ public class RagdollControlClient {
     private static float moveZ;
     private static boolean moving;
     private static boolean jumping;
+    private static boolean grab;
 
     private RagdollControlClient() {
     }
@@ -36,6 +39,8 @@ public class RagdollControlClient {
             moveZ = 0;
             moving = false;
             jumping = false;
+            grab = false;
+            RagdollGrabRayRenderer.clear();
         }
     }
 
@@ -67,7 +72,7 @@ public class RagdollControlClient {
         input.jumping = false;
     }
 
-    /** 客户端每 tick 调用：控制期间把输入发包给服务端。 */
+    /** 客户端每 tick 调用：控制期间把输入（含抓取键状态与摄像机朝向）发包给服务端。 */
     public static void tick() {
         if (!controlling) {
             return;
@@ -77,7 +82,9 @@ public class RagdollControlClient {
             setControlling(false);
             return;
         }
+        grab = SableRagdollLibClient.GRAB.isDown();
         mc.getConnection().send(new ServerboundCustomPayloadPacket(
-                new ServerboundRagdollControlInputPacket(moveX, moveZ, moving, mc.player.getYRot(), jumping)));
+                new ServerboundRagdollControlInputPacket(
+                        moveX, moveZ, moving, mc.player.getYRot(), mc.player.getXRot(), jumping, grab)));
     }
 }

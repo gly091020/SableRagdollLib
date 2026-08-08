@@ -28,6 +28,7 @@
   "text.sableragdolllib.command.pause": "暂停/恢复物理引擎",
   "text.sableragdolllib.command.debug_render": "调试渲染切换",
   "key.sableragdolllib.open_editor": "打开编辑器",
+  "key.sableragdolllib.grab": "抓取",
   "key.category.sableragdolllib": "Sable: 布娃娃库",
   "text.sableragdolllib.open_file.base": "基于",
 

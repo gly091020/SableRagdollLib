@@ -12,6 +12,7 @@ import com.gly091020.SableRagdollLib.common.RagdollReloadListener;
 import com.gly091020.SableRagdollLib.common.ServerGetter;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
 import com.gly091020.SableRagdollLib.network.ClientboundRagdollControlPacket;
+import com.gly091020.SableRagdollLib.network.ClientboundRagdollGrabRayPacket;
 import com.gly091020.SableRagdollLib.network.ServerboundDragRagdollPacket;
 import com.gly091020.SableRagdollLib.network.ServerboundRagdollControlInputPacket;
 import com.gly091020.SableRagdollLib.test.TestMain;
@@ -89,6 +90,11 @@ public class SableRagdollLib {
                 ServerboundRagdollControlInputPacket.TYPE,
                 ServerboundRagdollControlInputPacket.STREAM_CODEC,
                 ServerboundRagdollControlInputPacket::handle
+        );
+        registrar.playToClient(
+                ClientboundRagdollGrabRayPacket.TYPE,
+                ClientboundRagdollGrabRayPacket.STREAM_CODEC,
+                ClientboundRagdollGrabRayPacket::handle
         );
         }
     }

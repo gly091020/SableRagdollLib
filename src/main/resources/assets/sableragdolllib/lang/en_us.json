@@ -28,6 +28,7 @@
   "text.sableragdolllib.command.pause": "Pause/Resume physics engine",
   "text.sableragdolllib.command.debug_render": "Toggle debug render",
   "key.sableragdolllib.open_editor": "Open editor",
+  "key.sableragdolllib.grab": "Grab",
   "key.category.sableragdolllib": "Sable: Ragdoll Library",
   "text.sableragdolllib.open_file.base": "Based on",
 

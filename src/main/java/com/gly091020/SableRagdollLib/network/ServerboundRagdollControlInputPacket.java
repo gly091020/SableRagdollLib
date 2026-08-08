@@ -14,10 +14,12 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * <p>
  * 客户端在控制期间每 tick 发送一次；moveX/moveZ 为世界坐标下的水平方向
  * （由 WASD 与玩家朝向换算，未归一化），moving 表示是否在按移动键，
- * yaw 为玩家摄像机朝向（世界角度，度），用于让布娃娃面向玩家，
- * jumping 为空格键状态（服务端按上升沿触发跳跃，按住不会连跳）。
+ * yaw/pitch 为玩家摄像机朝向（世界角度，度）：yaw 让布娃娃面向玩家、
+ * pitch 用于抓取射线定方向，jumping 为空格键状态（服务端按上升沿触发跳跃，
+ * 按住不会连跳），grab 为抓取键（左 Alt）按住状态（服务端按上升沿切换
+ * 抓取/取消，按住不会重复触发）。
  */
-public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boolean moving, float yaw, boolean jumping) implements CustomPacketPayload {
+public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boolean moving, float yaw, float pitch, boolean jumping, boolean grab) implements CustomPacketPayload {
 
     public static final Type<ServerboundRagdollControlInputPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(SableRagdollLib.MODID, "ragdoll_control_input"));
@@ -35,11 +37,15 @@ public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boo
         buf.writeFloat(packet.moveZ());
         buf.writeBoolean(packet.moving());
         buf.writeFloat(packet.yaw());
+        buf.writeFloat(packet.pitch());
         buf.writeBoolean(packet.jumping());
+        buf.writeBoolean(packet.grab());
     }
 
     private static ServerboundRagdollControlInputPacket decode(FriendlyByteBuf buf) {
-        return new ServerboundRagdollControlInputPacket(buf.readFloat(), buf.readFloat(), buf.readBoolean(), buf.readFloat(), buf.readBoolean());
+        return new ServerboundRagdollControlInputPacket(
+                buf.readFloat(), buf.readFloat(), buf.readBoolean(),
+                buf.readFloat(), buf.readFloat(), buf.readBoolean(), buf.readBoolean());
     }
 
     public void handle(IPayloadContext context) {
@@ -50,7 +56,7 @@ public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boo
         context.enqueueWork(() -> {
             var session = RagdollControlManager.get(player);
             if (session != null) {
-                session.updateInput(moveX(), moveZ(), moving(), yaw(), jumping());
+                session.updateInput(moveX(), moveZ(), moving(), yaw(), pitch(), jumping(), grab());
             }
         });
     }
