@@ -98,6 +98,7 @@ public class SableRagdollLibClient {
 
         @SubscribeEvent
         public static void onRenderGui(RenderGuiEvent.Post event){
+            if(Minecraft.getInstance().options.hideGui)return;
             var mc = Minecraft.getInstance();
             // 木偶控制时显示提示
             if(RagdollControlClient.isControlling()){

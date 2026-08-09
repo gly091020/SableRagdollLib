@@ -1,6 +1,7 @@
 package com.gly091020.SableRagdollLib.client;
 
 import com.gly091020.SableRagdollLib.block.AbstractPartBlock;
+import com.gly091020.SableRagdollLib.entity.PartSeat;
 import com.gly091020.SableRagdollLib.network.ServerboundDragRagdollPacket;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import net.minecraft.client.Minecraft;
@@ -52,6 +53,8 @@ public class RagdollDragClient {
     }
 
     private static void tryStart(Minecraft mc, LocalPlayer player) {
+        if(player.getVehicle() instanceof PartSeat)return;
+
         var hit = mc.hitResult;
         if (hit == null || hit.getType() != HitResult.Type.BLOCK || mc.level == null) return;
         var blockHit = (BlockHitResult) hit;

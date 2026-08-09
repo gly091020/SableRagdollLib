@@ -104,6 +104,8 @@ public class RagdollDragManager {
         var ragdoll = RagdollManager.get(partData.ragdollUUID());
         if (ragdoll == null || !ragdoll.isAlive()) return;
 
+        if(ragdoll.getEntity() != null && ragdoll.getEntity().is(player))return;
+
         // 拾取距离校验（锚点在子维度局部坐标，用 Sable 官方距离辅助函数换算到世界坐标）
         if (!withinRange(level, serverPlayer, anchor, PICK_RANGE)) return;
 

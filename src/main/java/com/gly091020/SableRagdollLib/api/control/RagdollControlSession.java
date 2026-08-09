@@ -6,6 +6,8 @@ import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import com.mojang.logging.LogUtils;
 import dev.ryanhcode.sable.Sable;
 import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
+import dev.ryanhcode.sable.api.physics.constraint.FreeConstraintConfiguration;
+import dev.ryanhcode.sable.api.physics.constraint.FreeConstraintHandle;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
 import dev.ryanhcode.sable.api.physics.constraint.GenericConstraintConfiguration;
 import dev.ryanhcode.sable.api.physics.constraint.GenericConstraintHandle;
@@ -39,7 +41,8 @@ import java.util.Set;
  * <ul>
  *     <li>身体跟随：一条"世界 ↔ 身体"自由约束，X/Z 线性电机按客户端发来的移动输入
  *     （WASD 换算成世界方向）推进目标点，速度约 {@value #CONTROL_SPEED} 方块/秒，
- *     Y 交给重力；角轴用软回正电机保持直立（角静止帧每 tick 跟随 yaw，见下方"角轴经验"），移动时身体转向玩家摄像机方向。</li>
+ *     Y 交给重力；角轴用软回正电机保持直立（角静止帧每 tick 跟随 yaw，见下方"角轴经验"），移动时身体转向玩家摄像机方向。
+ *     目标点在身体朝向上再往前偏 {@value #BODY_TARGET_FORWARD} 格（只偏电机目标，不漂移），站得更靠前。</li>
  *     <li>落脚点行走：每走 {@value #STEP_LENGTH} 方块切换一次支撑脚。算法算出下一个
  *     落脚点（身体目标位置 + 前进方向 × 半步长 + 侧向偏移），把新支撑脚的脚底中心用
  *     "电机回正"的世界↔腿约束绑上去——目标从脚当前位置逐渐收敛到落脚点，避免猛拽；
@@ -49,7 +52,8 @@ import java.util.Set;
  *     避免支撑脚锁在半空拖慢下落）；空中仍可水平转向/移动。</li>
  *     <li>抓取：左 Alt 键。按住时双手一起抬起——目标按各模型手臂自身长度算，
  *     手臂转到与身体垂直（水平前伸），方向由身体↔手臂约束的 motor target
- *     控制（内力不拽飞身体），不写死高度；松开瞬间从手掌底部中心沿"手的正方向"
+ *     控制（内力不拽飞身体），不写死高度；抬手期间创建 手↔头 自由约束取消两者
+ *     碰撞（头没识别到则跳过），手举起来不会顶到脑袋；松开瞬间从手掌底部中心沿"手的正方向"
  *     射线探测（最远 {@value #GRAB_REACH} 格，与玩家视线无关），命中主世界方块
  *     或其它物理结构就用软电机把两只手掌拉到命中点两侧（左手偏身体左侧、右手
  *     偏右侧，不挤在一起）；抓到物理结构时还带角轴同步，物品跟着手臂一起转。
@@ -82,12 +86,14 @@ public class RagdollControlSession {
     private static final double MAX_STEP = 7 * 0.05;
     /** 目标点与身体实际位置允许的最大水平滞后（方块）：被墙挡住时目标不再前移，破墙后不会猛拽 */
     private static final double MAX_TARGET_LAG = 0.5;
+    /** 身体回正/站立目标点前偏量（方块）：沿身体当前朝向稍微往前一点，布娃娃站得靠前一些 */
+    private static final double BODY_TARGET_FORWARD = 0.1;
     /** 跳跃高度（方块）：起跳速度 v = sqrt(2*g*h) */
     private static final double JUMP_HEIGHT = 50;
     /** 跳跃后暂停迈步的刻数（约等于滞空时间），避免空中把脚锁在半空 */
     private static final int JUMP_AIR_TICKS = 5;
     /** 身体跟随电机参数（×质量） */
-    private static final double LINEAR_STIFFNESS = 90;
+    private static final double LINEAR_STIFFNESS = 300;
     private static final double LINEAR_DAMPING = 22;
     private static final double LINEAR_MAX_FORCE = 400;
     /** 身体直立回正电机参数（×质量）：角轴软回正，允许小幅倾斜 */
@@ -99,7 +105,7 @@ public class RagdollControlSession {
     private static final double YAW_TURN_SPEED = 0.25;
     /** 支撑脚电机参数（×质量）：把脚底拉回落脚点，自动回正 */
     private static final double STANCE_STIFFNESS = 5000;
-    private static final double STANCE_DAMPING = 100;
+    private static final double STANCE_DAMPING = 50;
     /** 支撑脚电机最大力度上限，防止把肢体/身体拉飞 */
     private static final double STANCE_MAX_FORCE = 1200;
     /** 支撑脚电机目标每刻最多向落脚点收敛的距离（方块），避免换脚时一次性猛拽 */
@@ -115,7 +121,7 @@ public class RagdollControlSession {
     /** 抓取阶段（松开 Alt 后）目标收敛速度（方块/刻）：手快速落到物品两侧 */
     private static final double GRAB_HOLD_STEP = 0.5;
     /** 两只手抓同一个物品时的横向间距（方块）：左手偏身体左侧、右手偏右侧，不挤到一起 */
-    private static final double GRAB_HAND_SPACING = 0.35;
+    private static final double GRAB_HAND_SPACING = 0.2;
     /** 抓取角轴同步电机参数（×质量）：让物品跟着手臂转（只有抓到物理结构时启用） */
     private static final double GRAB_ANGULAR_STIFFNESS = 800;
     private static final double GRAB_ANGULAR_DAMPING = 60;
@@ -144,6 +150,7 @@ public class RagdollControlSession {
     private final ServerSubLevel rightLeg;
     private final ServerSubLevel leftArm;
     private final ServerSubLevel rightArm;
+    private final ServerSubLevel head;
 
     /** 世界↔身体自由约束：X/Z 线性电机驱动移动，Y 交给重力 */
     private GenericConstraintHandle groundJoint;
@@ -188,6 +195,9 @@ public class RagdollControlSession {
     /** 抬手约束：身体 ↔ 手臂（自由约束 + 线性电机），抓取后也继续尝试保持抬手姿势 */
     private GenericConstraintHandle raiseJointA;
     private GenericConstraintHandle raiseJointB;
+    /** 抬手期间取消 手↔头 碰撞的自由约束（FreeConstraint，不锁任何轴），放下时移除 */
+    private FreeConstraintHandle headFreeA;
+    private FreeConstraintHandle headFreeB;
     /** 抬手电机目标（约束帧坐标 = 身体局部轴），每刻向 raiseFinalRel 收敛 */
     private final Vector3d raiseTargetRelA = new Vector3d();
     private final Vector3d raiseTargetRelB = new Vector3d();
@@ -225,7 +235,7 @@ public class RagdollControlSession {
 
     private RagdollControlSession(ServerPlayer player, Ragdoll ragdoll, ServerSubLevelContainer container,
                                   ServerSubLevel body, ServerSubLevel leftLeg, ServerSubLevel rightLeg,
-                                  ServerSubLevel leftArm, ServerSubLevel rightArm) {
+                                  ServerSubLevel leftArm, ServerSubLevel rightArm, ServerSubLevel head) {
         this.player = player;
         this.ragdoll = ragdoll;
         this.container = container;
@@ -234,6 +244,7 @@ public class RagdollControlSession {
         this.rightLeg = rightLeg;
         this.leftArm = leftArm;
         this.rightArm = rightArm;
+        this.head = head;
     }
 
     /**
@@ -291,7 +302,8 @@ public class RagdollControlSession {
                 player, ragdoll, container, body,
                 byName.get(roles.get(PartRole.LEFT_LEG)),
                 byName.get(roles.get(PartRole.RIGHT_LEG)),
-                arms[0], arms[1]);
+                arms[0], arms[1],
+                byName.get(roles.get(PartRole.HEAD)));
         session.standUpIfTilted();
         if (!session.initGround()) {
             session.dispose();
@@ -312,8 +324,9 @@ public class RagdollControlSession {
                 || (grabJointA != null && !grabJointA.isValid()) || (grabJointB != null && !grabJointB.isValid())) {
             releaseGrab();
         }
-        // 跳跃：空格上升沿（松开→按下）触发一次，按住不会连跳；空中（滞空计数未结束）不可再跳
-        if (jumpAirTicks == 0 && inputJumping && !prevJumpHeld) {
+        // 跳跃：空格上升沿（松开→按下）触发一次，按住不会连跳；
+        // 只有脚底着地才能跳（isAirborne 判断）：空中连跳会无限飞天（踩过的坑）
+        if (!isAirborne() && jumpAirTicks == 0 && inputJumping && !prevJumpHeld) {
             doJump();
         }
         prevJumpHeld = inputJumping;
@@ -550,11 +563,16 @@ public class RagdollControlSession {
             yawTarget = -step;
         }
         double mass = massOf(body);
+        // 身体回正/站立目标点稍微往前偏一点（沿身体当前朝向）：站得靠前一些。
+        // 只在电机目标上加偏移，不改 lastTarget，避免目标点每 tick 累加漂移。
+        double facingYaw = bodyYaw();
+        double targetX = target.x - Math.sin(facingYaw) * BODY_TARGET_FORWARD;
+        double targetZ = target.z + Math.cos(facingYaw) * BODY_TARGET_FORWARD;
         try {
-            groundJoint.setFrame2(groundPlotPos, new Quaterniond().rotationY(bodyYaw()));
-            groundJoint.setMotor(ConstraintJointAxis.LINEAR_X, target.x - groundFramePos.x,
+            groundJoint.setFrame2(groundPlotPos, new Quaterniond().rotationY(facingYaw));
+            groundJoint.setMotor(ConstraintJointAxis.LINEAR_X, targetX - groundFramePos.x,
                     LINEAR_STIFFNESS * mass, LINEAR_DAMPING * mass, true, LINEAR_MAX_FORCE * mass);
-            groundJoint.setMotor(ConstraintJointAxis.LINEAR_Z, target.z - groundFramePos.z,
+            groundJoint.setMotor(ConstraintJointAxis.LINEAR_Z, targetZ - groundFramePos.z,
                     LINEAR_STIFFNESS * mass, LINEAR_DAMPING * mass, true, LINEAR_MAX_FORCE * mass);
             // Y 轴不设电机：交给重力
             // 角轴软回正（静止帧已跟随 yaw，X/Z 只纠正俯仰/侧倾）
@@ -887,6 +905,7 @@ public class RagdollControlSession {
             if (joint != null) {
                 raiseJointA = joint;
                 grabHandA = leftArm;
+                headFreeA = attachHeadFree(leftArm);
                 Vector3d initial = initialRelOffset(leftArm);
                 raiseTargetRelA.set(initial);
                 raiseFinalRelA.set(raisedRelOffset(initial, leftArm));
@@ -898,6 +917,7 @@ public class RagdollControlSession {
             if (joint != null) {
                 raiseJointB = joint;
                 grabHandB = rightArm;
+                headFreeB = attachHeadFree(rightArm);
                 Vector3d initial = initialRelOffset(rightArm);
                 raiseTargetRelB.set(initial);
                 raiseFinalRelB.set(raisedRelOffset(initial, rightArm));
@@ -935,6 +955,31 @@ public class RagdollControlSession {
             }
         } catch (Exception e) {
             LOGGER.debug("创建抬手约束失败：", e);
+        }
+        return null;
+    }
+
+    /**
+     * 取消手与头的碰撞：创建一个 手臂↔头 的自由约束（不锁任何轴，只让两者不再互相碰撞）。
+     * 抬手时手会经过/停在头附近，不取消碰撞会顶着脑袋把身体推歪。
+     * 头没识别到就跳过。锚点用各自部件的质心（plot 内）。
+     */
+    private FreeConstraintHandle attachHeadFree(ServerSubLevel arm) {
+        if (head == null || head.isRemoved() || arm == null || arm.isRemoved()) {
+            return null;
+        }
+        try {
+            FreeConstraintHandle joint = container.physicsSystem().getPipeline().addConstraint(
+                    arm, head,
+                    new FreeConstraintConfiguration(
+                            new Vector3d(arm.logicalPose().rotationPoint()),
+                            new Vector3d(head.logicalPose().rotationPoint()),
+                            new Quaterniond()));
+            if (joint != null && joint.isValid()) {
+                return joint;
+            }
+        } catch (Exception e) {
+            LOGGER.debug("创建手头免碰撞约束失败：", e);
         }
         return null;
     }
@@ -1071,12 +1116,16 @@ public class RagdollControlSession {
         return null;
     }
 
-    /** 删除两只手的抬手约束与抓取约束（不改变状态）。 */
+    /** 删除两只手的抬手约束、手头免碰撞约束与抓取约束（不改变状态）。 */
     private void releaseHands() {
         removeJoint(raiseJointA);
         raiseJointA = null;
         removeJoint(raiseJointB);
         raiseJointB = null;
+        removeJoint(headFreeA);
+        headFreeA = null;
+        removeJoint(headFreeB);
+        headFreeB = null;
         removeJoint(grabJointA);
         grabJointA = null;
         removeJoint(grabJointB);

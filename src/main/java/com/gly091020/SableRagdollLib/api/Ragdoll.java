@@ -14,6 +14,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Quaterniond;
@@ -100,7 +101,8 @@ public class Ragdoll {
         for (UUID sub: subLevelUUIDList){
             var subLevel = container.getSubLevel(sub);
             if(subLevel == null || subLevel.isRemoved())continue;
-            subLevel.markRemoved();
+//            subLevel.markRemoved();
+            subLevel.getPlot().getEmbeddedLevelAccessor().setBlock(BlockPos.ZERO, Blocks.AIR.defaultBlockState(), 3);
         }
     }
 
