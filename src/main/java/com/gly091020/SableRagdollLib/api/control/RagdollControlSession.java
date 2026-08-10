@@ -53,7 +53,8 @@ import java.util.Set;
  *     避免支撑脚锁在半空拖慢下落）；空中仍可水平转向/移动。</li>
  *     <li>抓取：左 Alt 键。手上拿着物品时（主手/副手任一非空）改走"持物抬手"开关：
  *     按下抬起拿物品的那只手（两只手都有物品则都抬，主手物品抬玩家主手侧的手臂），
- *     再按一次取消放下；双手都空才执行下面的抓取逻辑。按住时双手一起抬起——目标按各模型手臂自身长度算，
+ *     再按一次取消放下；双手都空才执行下面的抓取逻辑。按住时双手一起抬起——高度按肩部
+ *     定死（恰好水平 90°，不会抬过头），前伸量按各模型手臂自身长度算，
  *     手臂转到与身体垂直（水平前伸），方向由身体↔手臂约束的 motor target
  *     控制（内力不拽飞身体），不写死高度；抬手期间创建 手↔头 自由约束取消两者
  *     碰撞（头没识别到则跳过），手举起来不会顶到脑袋；松开瞬间从手掌底部中心沿"手的正方向"
@@ -1061,18 +1062,35 @@ public class RagdollControlSession {
     }
 
     /**
-     * 抬手最终目标（身体局部坐标）：从当前手掌偏移向上抬"臂长"、向前伸"臂长"。
-     * 这样手臂绕肩转到与身体垂直（水平前伸），高度随模型自己手臂长度自适应，
-     * 不同模型不用调参。
+     * 抬手最终目标（身体局部坐标）：手掌抬到与肩同高（肩部=手臂部件包围盒上端），
+     * 再向前伸"臂长"。这样手臂恰好转到与身体垂直（水平前伸，相对身体正好 90°），
+     * 不会再出现"手掌初始 Y + 臂长"超过肩高、手臂抬过头的情况；
+     * 高度按各模型手臂位置自适应，不同模型不用调参。
      */
     private Vector3d raisedRelOffset(Vector3d palmRel, ServerSubLevel arm) {
         double len = armLength(arm);
-        return new Vector3d(palmRel.x, palmRel.y + len, palmRel.z + len);
+        return new Vector3d(palmRel.x, shoulderRelOffset(arm).y - armWidth(arm) / 2, palmRel.z + len);
+    }
+
+    /** 肩部（手臂部件包围盒上端）相对身体质心的身体局部坐标：抬手目标以此定高度。 */
+    private Vector3d shoulderRelOffset(ServerSubLevel arm) {
+        var bodyPose = body.logicalPose();
+        var armPose = arm.logicalPose();
+        double half = arm.getPlot().getBoundingBox().height() / 2d;
+        Vector3d shoulderWorld = armPose.transformPosition(
+                new Vector3d(armPose.rotationPoint()).add(0, half, 0, new Vector3d()), new Vector3d());
+        Vector3d bodyCenter = bodyPose.transformPosition(bodyPose.rotationPoint(), new Vector3d());
+        Vector3d rel = new Vector3d(shoulderWorld).sub(bodyCenter);
+        return bodyPose.orientation().conjugate(new Quaterniond()).transform(rel, new Vector3d());
     }
 
     /** 手臂长度（肩到手掌，方块）：手臂部件包围盒高 - 0.2，与 {@link #partBottomWorld} 的偏移一致。 */
     private double armLength(ServerSubLevel arm) {
         return Math.max(0.2, arm.getPlot().getBoundingBox().height() - 0.2);
+    }
+
+    private double armWidth(ServerSubLevel arm){
+        return arm.getPlot().getBoundingBox().width();
     }
 
     /**

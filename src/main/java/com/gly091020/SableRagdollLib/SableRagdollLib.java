@@ -35,6 +35,7 @@ import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.PlayLevelSoundEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
@@ -186,6 +187,12 @@ public class SableRagdollLib {
                     && player.getVehicle() instanceof PartSeat) {
                 event.setCanceled(true);
             }
+        }
+
+        @SubscribeEvent
+        public static void onEntityDie(LivingDeathEvent event){
+            if(event.getEntity().getVehicle() instanceof PartSeat)
+                event.getEntity().stopRiding();
         }
     }
 }
