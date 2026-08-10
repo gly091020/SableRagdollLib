@@ -20,6 +20,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -50,7 +51,9 @@ import java.util.Set;
  *     <li>跳跃：空格键（客户端随输入包上报）按上升沿触发，释放支撑脚并给身体一个
  *     向上的速度（v = sqrt(2*g*h)），滞空/坠落期间暂停迈步（脚底离地即停，
  *     避免支撑脚锁在半空拖慢下落）；空中仍可水平转向/移动。</li>
- *     <li>抓取：左 Alt 键。按住时双手一起抬起——目标按各模型手臂自身长度算，
+ *     <li>抓取：左 Alt 键。手上拿着物品时（主手/副手任一非空）改走"持物抬手"开关：
+ *     按下抬起拿物品的那只手（两只手都有物品则都抬，主手物品抬玩家主手侧的手臂），
+ *     再按一次取消放下；双手都空才执行下面的抓取逻辑。按住时双手一起抬起——目标按各模型手臂自身长度算，
  *     手臂转到与身体垂直（水平前伸），方向由身体↔手臂约束的 motor target
  *     控制（内力不拽飞身体），不写死高度；抬手期间创建 手↔头 自由约束取消两者
  *     碰撞（头没识别到则跳过），手举起来不会顶到脑袋；松开瞬间从手掌底部中心沿"手的正方向"
@@ -184,10 +187,12 @@ public class RagdollControlSession {
     private boolean inputGrab;
     /** 上一刻抓取键状态：用于上升沿/下降沿切换状态机 */
     private boolean prevGrabHeld;
-    /** 抓取状态机：IDLE=空闲，REACHING=按住 Alt 双手前伸，HOLDING=松开 Alt 后锁定抓取 */
+    /** 抓取状态机：IDLE=空闲，RAISED=持物抬手（再按 Alt 取消），
+     *  REACHING=按住 Alt 双手前伸，HOLDING=松开 Alt 后锁定抓取 */
     private static final int GRAB_IDLE = 0;
     private static final int GRAB_REACHING = 1;
     private static final int GRAB_HOLDING = 2;
+    private static final int GRAB_RAISED = 3;
     private int grabState = GRAB_IDLE;
     /** 两只抓取手（左右各一，缺失时只用存在的那只） */
     private ServerSubLevel grabHandA;
@@ -334,13 +339,18 @@ public class RagdollControlSession {
             jumpAirTicks--;
         }
         // 抓取状态机：
-        //   IDLE --Alt 按下--> REACHING（双手沿视线前伸）
+        //   IDLE --Alt 按下, 双手有物品--> RAISED（持物那只手抬起，再按 Alt 取消）
+        //   IDLE --Alt 按下, 双手空--> REACHING（双手沿视线前伸）
         //   REACHING --Alt 松开--> HOLDING（抓取视线方向的方块/结构，保持伸手姿势）
         //   HOLDING --Alt 按下--> IDLE（恢复，手臂自然垂落）
         if (inputGrab && !prevGrabHeld) {
             if (grabState == GRAB_IDLE) {
-                startReach();
-            } else if (grabState == GRAB_HOLDING) {
+                if (hasHandItem()) {
+                    startRaiseItem();
+                } else {
+                    startReach();
+                }
+            } else if (grabState == GRAB_HOLDING || grabState == GRAB_RAISED) {
                 releaseGrab();
             }
         } else if (!inputGrab && prevGrabHeld && grabState == GRAB_REACHING) {
@@ -929,6 +939,62 @@ public class RagdollControlSession {
         }
         grabState = GRAB_REACHING;
         applyGrabMotors();
+    }
+
+    /** 玩家是否有一只手拿着物品（主手或副手任一非空）：有物品时 Alt 走"持物抬手"开关，
+     *  双手都空才执行原来的抓取逻辑。 */
+    private boolean hasHandItem() {
+        return !player.getMainHandItem().isEmpty() || !player.getOffhandItem().isEmpty();
+    }
+
+    /**
+     * 持物抬手：手上拿着物品时按下 Alt，抬起拿物品的那只手（两只手都有物品则都抬），
+     * 再按一次 Alt 取消。复用抬手约束（身体↔手臂 + 手头免碰撞），
+     * 只给拿物品的手臂创建，另一只保持自然下垂。没有可抬的手臂时不进入该状态。
+     */
+    private void startRaiseItem() {
+        if (grabState != GRAB_IDLE) {
+            return;
+        }
+        boolean any = false;
+        if (leftArm != null && !leftArm.isRemoved() && armHoldsItem(true)) {
+            GenericConstraintHandle joint = attachReach(leftArm);
+            if (joint != null) {
+                raiseJointA = joint;
+                grabHandA = leftArm;
+                headFreeA = attachHeadFree(leftArm);
+                Vector3d initial = initialRelOffset(leftArm);
+                raiseTargetRelA.set(initial);
+                raiseFinalRelA.set(raisedRelOffset(initial, leftArm));
+                any = true;
+            }
+        }
+        if (rightArm != null && !rightArm.isRemoved() && armHoldsItem(false)) {
+            GenericConstraintHandle joint = attachReach(rightArm);
+            if (joint != null) {
+                raiseJointB = joint;
+                grabHandB = rightArm;
+                headFreeB = attachHeadFree(rightArm);
+                Vector3d initial = initialRelOffset(rightArm);
+                raiseTargetRelB.set(initial);
+                raiseFinalRelB.set(raisedRelOffset(initial, rightArm));
+                any = true;
+            }
+        }
+        if (!any) {
+            return;
+        }
+        grabState = GRAB_RAISED;
+        applyGrabMotors();
+    }
+
+    /** 布娃娃的某侧手臂是否正拿着物品：主手物品抬玩家主手侧的手臂，副手物品抬另一侧。 */
+    private boolean armHoldsItem(boolean isLeft) {
+        boolean mainIsLeft = player.getMainArm() == HumanoidArm.LEFT;
+        if (!player.getMainHandItem().isEmpty() && mainIsLeft == isLeft) {
+            return true;
+        }
+        return !player.getOffhandItem().isEmpty() && mainIsLeft != isLeft;
     }
 
     /**
