@@ -1069,7 +1069,7 @@ public class RagdollControlSession {
      */
     private Vector3d raisedRelOffset(Vector3d palmRel, ServerSubLevel arm) {
         double len = armLength(arm);
-        return new Vector3d(palmRel.x, shoulderRelOffset(arm).y - armWidth(arm) / 2, palmRel.z + len);
+        return new Vector3d(palmRel.x, shoulderRelOffset(arm).y, palmRel.z + len);
     }
 
     /** 肩部（手臂部件包围盒上端）相对身体质心的身体局部坐标：抬手目标以此定高度。 */

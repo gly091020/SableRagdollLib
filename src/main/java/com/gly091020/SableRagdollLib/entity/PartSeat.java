@@ -9,6 +9,8 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -23,9 +25,14 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public class PartSeat extends Entity {
+    /** 主子世界 UUID，通过实体数据同步到客户端（仅服务端可见的字段客户端拿不到）。 */
+    private static final EntityDataAccessor<Optional<UUID>> DATA_MAIN_UUID =
+            SynchedEntityData.defineId(PartSeat.class, EntityDataSerializers.OPTIONAL_UUID);
+
     private SubLevel main;
 
     private UUID mainUUID;
@@ -46,20 +53,31 @@ public class PartSeat extends Entity {
 
     public void setMainSubLevel(SubLevel main) {
         this.main = main;
-        mainUUID = main.getUniqueId();
+        this.mainUUID = main.getUniqueId();
+        this.entityData.set(DATA_MAIN_UUID, Optional.of(this.mainUUID));
     }
 
     @Override
     protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
-
+        builder.define(DATA_MAIN_UUID, Optional.empty());
     }
 
     @Override
     protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
-        if(compoundTag.contains("main"))
+        if(compoundTag.contains("main")) {
             mainUUID = compoundTag.getUUID("main");
+            this.entityData.set(DATA_MAIN_UUID, Optional.of(mainUUID));
+        }
         if(compoundTag.hasUUID("passenger"))
             pendingPassengerUUID = compoundTag.getUUID("passenger");
+    }
+
+    @Override
+    public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
+        super.onSyncedDataUpdated(key);
+        if (DATA_MAIN_UUID.equals(key)) {
+            this.mainUUID = this.entityData.get(DATA_MAIN_UUID).orElse(null);
+        }
     }
 
     @Override
@@ -207,6 +225,7 @@ public class PartSeat extends Entity {
     }
 
     public UUID getMainUUID() {
-        return mainUUID;
+        var uuid = this.entityData.get(DATA_MAIN_UUID).orElse(null);
+        return uuid != null ? uuid : mainUUID;
     }
 }

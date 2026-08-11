@@ -191,7 +191,7 @@ public class SableRagdollLib {
 
         @SubscribeEvent
         public static void onEntityDie(LivingDeathEvent event){
-            if(event.getEntity().getVehicle() instanceof PartSeat)
+            if(event.getEntity().getVehicle() instanceof PartSeat && event.getEntity().deathTime > 0)
                 event.getEntity().stopRiding();
         }
     }
