@@ -11,10 +11,7 @@ import com.gly091020.SableRagdollLib.common.PartColliderBoxManager;
 import com.gly091020.SableRagdollLib.common.RagdollReloadListener;
 import com.gly091020.SableRagdollLib.common.ServerGetter;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
-import com.gly091020.SableRagdollLib.network.ClientboundRagdollControlPacket;
-import com.gly091020.SableRagdollLib.network.ClientboundRagdollGrabRayPacket;
-import com.gly091020.SableRagdollLib.network.ServerboundDragRagdollPacket;
-import com.gly091020.SableRagdollLib.network.ServerboundRagdollControlInputPacket;
+import com.gly091020.SableRagdollLib.network.*;
 import com.gly091020.SableRagdollLib.test.TestMain;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
@@ -81,22 +78,27 @@ public class SableRagdollLib {
                 ServerboundDragRagdollPacket.TYPE,
                 ServerboundDragRagdollPacket.STREAM_CODEC,
                 ServerboundDragRagdollPacket::handle
-        );
-        registrar.playToClient(
-                ClientboundRagdollControlPacket.TYPE,
-                ClientboundRagdollControlPacket.STREAM_CODEC,
-                ClientboundRagdollControlPacket::handle
-        );
-        registrar.playToServer(
-                ServerboundRagdollControlInputPacket.TYPE,
-                ServerboundRagdollControlInputPacket.STREAM_CODEC,
-                ServerboundRagdollControlInputPacket::handle
-        );
-        registrar.playToClient(
-                ClientboundRagdollGrabRayPacket.TYPE,
-                ClientboundRagdollGrabRayPacket.STREAM_CODEC,
-                ClientboundRagdollGrabRayPacket::handle
-        );
+            );
+            registrar.playToClient(
+                    ClientboundRagdollControlPacket.TYPE,
+                    ClientboundRagdollControlPacket.STREAM_CODEC,
+                    ClientboundRagdollControlPacket::handle
+            );
+            registrar.playToServer(
+                    ServerboundRagdollControlInputPacket.TYPE,
+                    ServerboundRagdollControlInputPacket.STREAM_CODEC,
+                    ServerboundRagdollControlInputPacket::handle
+            );
+            registrar.playToServer(
+                    ServerboundSwitchControlModePacket.TYPE,
+                    ServerboundSwitchControlModePacket.STREAM_CODEC,
+                    ServerboundSwitchControlModePacket::handle
+            );
+            registrar.playToClient(
+                    ClientboundRagdollGrabRayPacket.TYPE,
+                    ClientboundRagdollGrabRayPacket.STREAM_CODEC,
+                    ClientboundRagdollGrabRayPacket::handle
+            );
         }
     }
 

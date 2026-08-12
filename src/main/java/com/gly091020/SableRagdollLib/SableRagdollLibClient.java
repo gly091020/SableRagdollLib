@@ -7,6 +7,7 @@ import com.gly091020.SableRagdollLib.client.renderer.PartSeatRenderer;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibClientCommand;
 import com.gly091020.SableRagdollLib.editor.EditorOpener;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
+import com.gly091020.SableRagdollLib.network.ServerboundSwitchControlModePacket;
 import com.gly091020.SableRagdollLib.test.TestMainClient;
 import me.shedaniel.autoconfig.AutoConfig;
 import net.minecraft.client.KeyMapping;
@@ -24,6 +25,7 @@ import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.event.*;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 import static com.gly091020.SableRagdollLib.SableRagdollLib.PART_SEAT;
@@ -35,10 +37,16 @@ public class SableRagdollLibClient {
             GLFW.GLFW_KEY_UNKNOWN,
             "key.category.sableragdolllib"
     );
-    /** 木偶模式抓取键：按下后让布娃娃的手向前伸并抓住视线方向上的方块/物理结构，再按一次取消 */
+
     public static final KeyMapping GRAB = new KeyMapping(
             "key.sableragdolllib.grab",
             GLFW.GLFW_KEY_LEFT_ALT,
+            "key.category.sableragdolllib"
+    );
+
+    public static final KeyMapping SWITCH_CONTROL = new KeyMapping(
+            "key.sableragdolllib.switch_control",
+            GLFW.GLFW_KEY_KP_1,
             "key.category.sableragdolllib"
     );
 
@@ -69,6 +77,7 @@ public class SableRagdollLibClient {
         public static void onRegistryKey(RegisterKeyMappingsEvent event){
             event.register(OPEN_EDITOR);
             event.register(GRAB);
+            event.register(SWITCH_CONTROL);
         }
 
         @SubscribeEvent
@@ -76,6 +85,8 @@ public class SableRagdollLibClient {
             while (OPEN_EDITOR.consumeClick()){
                 if(SableRagdollLib.hasLDLib()) EditorOpener.open();
             }
+            while (SWITCH_CONTROL.consumeClick())
+                PacketDistributor.sendToServer(new ServerboundSwitchControlModePacket());
             RagdollDragClient.tick();
             RagdollControlClient.tick();
         }
