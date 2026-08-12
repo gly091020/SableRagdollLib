@@ -16,6 +16,7 @@ import com.gly091020.SableRagdollLib.test.TestMain;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageTypes;
@@ -33,6 +34,7 @@ import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.PlayLevelSoundEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
@@ -165,8 +167,20 @@ public class SableRagdollLib {
         @SubscribeEvent
         public static void onEntityHurt(LivingIncomingDamageEvent event){
             if(event.getEntity().getVehicle() instanceof PartSeat){
-                if(!SableRagdollLib.config.enableHurt || event.getSource().is(DamageTypes.IN_WALL))
+                // 控制布娃娃的玩家允许受伤（用于受伤眩晕），其余骑乘者按原逻辑免疫
+                boolean controlling = event.getEntity() instanceof Player player && RagdollControlManager.get(player) != null;
+                if((!SableRagdollLib.config.enableRagdollHurt && !controlling) || event.getSource().is(DamageTypes.IN_WALL))
                     event.setCanceled(true);
+            }
+        }
+
+        @SubscribeEvent
+        public static void onPlayerHurt(LivingDamageEvent.Pre event){
+            if(!SableRagdollLib.config.stunOnHurt)return;
+            if(event.getEntity() instanceof ServerPlayer player && event.getSource().is(DamageTypes.FLY_INTO_WALL) && event.getNewDamage() > 0.1){
+                var session = RagdollControlManager.get(player);
+                if(session != null)
+                    session.stun(60);
             }
         }
 

@@ -34,7 +34,8 @@
 
   "text.autoconfig.sableragdolllib.title": "物理布娃娃库 设置",
   "text.autoconfig.sableragdolllib.option.enableForceLoad": "强制加载物理结构",
-  "text.autoconfig.sableragdolllib.option.enableHurt": "启用受伤",
+  "text.autoconfig.sableragdolllib.option.enableRagdollHurt": "启用受伤",
+  "text.autoconfig.sableragdolllib.option.stunOnHurt": "受伤眩晕",
   "text.sableragdolllib.open_lib_config": "打开 Lib 设置",
 
   "key.sableragdolllib.switch_control": "切换控制模式"

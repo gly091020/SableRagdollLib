@@ -1,6 +1,7 @@
 package com.gly091020.SableRagdollLib.api.control;
 
 import com.gly091020.SableRagdollLib.api.Ragdoll;
+import com.gly091020.SableRagdollLib.api.ScheduleManager;
 import com.gly091020.SableRagdollLib.network.ClientboundRagdollGrabRayPacket;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import com.mojang.logging.LogUtils;
@@ -19,6 +20,7 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.level.ClipContext;
@@ -238,6 +240,8 @@ public class RagdollControlSession {
     /** 最近一次移动方向（世界坐标，归一化），停下后保留用于迈步 */
     private final Vector3d lastDir = new Vector3d(0, 0, 1);
     private boolean disposed;
+    /** 受伤眩晕剩余刻数：>0 时忽略玩家输入，每刻递减 */
+    private int stunTicks;
 
     private RagdollControlSession(ServerPlayer player, Ragdoll ragdoll, ServerSubLevelContainer container,
                                   ServerSubLevel body, ServerSubLevel leftLeg, ServerSubLevel rightLeg,
@@ -330,6 +334,24 @@ public class RagdollControlSession {
                 || (grabJointA != null && !grabJointA.isValid()) || (grabJointB != null && !grabJointB.isValid())) {
             releaseGrab();
         }
+        // 受伤眩晕：布娃娃完全失去控制瘫软，眩晕结束后站起并重建控制
+        if (stunTicks > 0) {
+            stunTicks--;
+            if (stunTicks == 0) {
+                // 避免恢复时把眩晕期间按下的跳跃/抓取当成新按下误触发
+                prevJumpHeld = inputJumping;
+                prevGrabHeld = inputGrab;
+                stepProgress = 0;
+                wasMoving = false;
+                jumpAirTicks = 0;
+                standUpIfTilted();
+                if (!initGround()) {
+                    dispose();
+                    return;
+                }
+            }
+            return;
+        }
         // 跳跃：空格上升沿（松开→按下）触发一次，按住不会连跳；
         // 只有脚底着地才能跳（isAirborne 判断）：空中连跳会无限飞天（踩过的坑）
         if (!isAirborne() && jumpAirTicks == 0 && inputJumping && !prevJumpHeld) {
@@ -392,6 +414,19 @@ public class RagdollControlSession {
     }
 
     /**
+     * 眩晕指定刻数（60 刻 = 3 秒），期间放开站立/行走控制让布娃娃瘫软，
+     * 手里抓取/抬起的东西保持不动，结束后站起恢复控制。
+     */
+    public void stun(int ticks) {
+        ScheduleManager.scheduleDelayed((ServerLevel) player.level(), 0, () -> {
+            stunTicks = Math.max(stunTicks, ticks);
+            releaseStance();
+            removeJoint(groundJoint);
+            groundJoint = null;
+        });
+    }
+
+    /**
      * 触发跳跃：释放支撑脚（脚跟着身体一起跳），给身体一个向上的速度，
      * 并暂停空中迈步，等落地后恢复。
      * 起跳速度 v = sqrt(2*g*h)，g 取该维度实际重力（Sable 默认 11 m/s²）。
@@ -426,7 +461,10 @@ public class RagdollControlSession {
         if (!ragdoll.isAlive() || !ragdoll.isLoad()) {
             return false;
         }
-        if (groundJoint == null || !groundJoint.isValid() || body.isRemoved()) {
+        if (body.isRemoved()) {
+            return false;
+        }
+        if (stunTicks <= 0 && (groundJoint == null || !groundJoint.isValid())) {
             return false;
         }
         return true;

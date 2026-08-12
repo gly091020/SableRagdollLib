@@ -29,7 +29,7 @@ public class AbstractPartBlockCallBack implements BlockSubLevelCollisionCallback
             rag1 = RagdollManager.get(level, otherHitBlockPos);
         if(NeoForge.EVENT_BUS.post(new RagdollCollisionEvent.Pre(rag, rag1, impactVelocity)).isCanceled())return CollisionResult.NONE;
 
-        if(SableRagdollLib.config.enableHurt && self.getEntity() != null){
+        if(SableRagdollLib.config.enableRagdollHurt && self.getEntity() != null){
             boolean selfCollision = otherHitBlockPos != null &&
                     level.getBlockEntity(otherHitBlockPos) instanceof AbstractPartBlockEntity target &&
                     target.getEntity() != null &&
