@@ -1,12 +1,16 @@
 package com.gly091020.SableRagdollLib.client.renderer;
 
+import com.gly091020.SableRagdollLib.api.control.PartRole;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import com.gly091020.SableRagdollLib.command.SableRagdollLibClientCommand;
 import com.gly091020.SableRagdollLib.common.DefFileLoader;
+import com.gly091020.SableRagdollLib.entity.PartSeat;
 import com.gly091020.SableRagdollLib.resource.file.RagdollHitbox;
 import com.gly091020.SableRagdollLib.resource.file.RagdollJoints;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.CameraType;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -23,6 +27,7 @@ public abstract class AbstractPartBlockRenderer<T extends AbstractPartBlockEntit
     @Override
     public final void render(T blockEntity, float v, PoseStack poseStack, MultiBufferSource multiBufferSource, int i, int i1) {
         if(blockEntity.getPartData() == null)return;
+        if(!shouldRender(blockEntity))return;
         if(SableRagdollLibClientCommand.debugRender) {
             renderDebug(blockEntity, poseStack, multiBufferSource);
             return;
@@ -48,6 +53,17 @@ public abstract class AbstractPartBlockRenderer<T extends AbstractPartBlockEntit
                 (float) Math.toRadians(rotate.y),
                 (float) Math.toRadians(rotate.z)));
         poseStack.scale((float) scale.x, (float) scale.y, (float) scale.z);
+    }
+
+    public boolean shouldRender(T blockEntity){
+        var option = Minecraft.getInstance().options.getCameraType();
+        if(option != CameraType.FIRST_PERSON)return true;
+        var player = Minecraft.getInstance().player;
+        if(player == null)return true;
+        if(!(player.getVehicle() instanceof PartSeat partSeat))return true;
+        var head = partSeat.getPartRoles().get(PartRole.HEAD);
+        if(head == null)return true;
+        return !head.equals(blockEntity.getSubLevelUUID());
     }
 
     public void firstRender(T blockEntity, float v, PoseStack poseStack, MultiBufferSource multiBufferSource, int i, int i1){};

@@ -1,6 +1,8 @@
 package com.gly091020.SableRagdollLib.api;
 
 import com.gly091020.SableRagdollLib.SableRagdollLib;
+import com.gly091020.SableRagdollLib.api.control.PartRole;
+import com.gly091020.SableRagdollLib.api.control.RagdollPartRecognizerRegistry;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
@@ -21,10 +23,7 @@ import org.joml.Quaterniond;
 import org.joml.Quaterniondc;
 import org.joml.Vector3d;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class Ragdoll {
     private final UUID uuid;
@@ -33,6 +32,8 @@ public class Ragdoll {
     private final UUID main;
     private boolean alive = true;
     private final List<PhysicsConstraintHandle> joints = new ArrayList<>();
+
+    private Map<PartRole, UUID> partRoles;
 
     public Ragdoll(ServerSubLevel... subLevels){
         this(Arrays.stream(subLevels).toList());
@@ -260,5 +261,60 @@ public class Ragdoll {
         if(mainSub.isRemoved())return new CompoundTag();
         if(mainSub.getUserDataTag() == null)mainSub.setUserDataTag(new CompoundTag());
         return mainSub.getUserDataTag();
+    }
+
+    public Map<PartRole, UUID> getPartRoles(){
+        if(partRoles == null)buildPartRoles();
+        return partRoles;
+    }
+
+    private void buildPartRoles(){
+        var container = ServerSubLevelContainer.getContainer(level);
+        if (container == null) return;
+        var mainSub = (ServerSubLevel)container.getSubLevel(main);
+        if(mainSub == null)return;
+        if(!(mainSub.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity blockEntity) || blockEntity.getPartData() == null)return;
+        var d = blockEntity.getPartData();
+
+        var result = RagdollPartRecognizerRegistry.recognize(d.defFile());
+        partRoles = new HashMap<>();
+        var subs = new HashMap<String, UUID>();
+        getSublevels().forEach(subLevel -> {
+            if(subLevel.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity blockEntity1)
+                subs.put(blockEntity1.getPartData().partName(), subLevel.getUniqueId());
+        });
+        result.forEach((partRole, name) -> {
+            var r = subs.get(name);
+            if(r != null)partRoles.put(partRole, r);
+        });
+    }
+
+    public void removeJoint(UUID a, UUID b){
+        var container = ServerSubLevelContainer.getContainer(level);
+        if (container == null) return;
+        var mainSub = (ServerSubLevel)container.getSubLevel(main);
+        if(mainSub == null)return;
+        if(!(mainSub.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity blockEntity) || blockEntity.getPartData() == null)return;
+        var d = blockEntity.getPartData();
+        var l = d.jointData();
+        if(l.isEmpty())return;
+        l = Optional.of(l.get().stream().filter(data -> !(data.a().equals(a) && data.b().equals(b))).toList());
+        blockEntity.setData(new AbstractPartBlockEntity.Data(
+                d.isMain(),
+                d.partName(),
+                d.ragdollUUID(),
+                d.defFile(),
+                d.type(),
+                d.hitbox(),
+                d.renderData(),
+                l,
+                d.expressions(),
+                d.subLevels()
+        ));
+        joints.forEach(j -> {
+            if(j.isValid())j.remove();
+        });
+        joints.clear();
+        blockEntity.createJoint();
     }
 }

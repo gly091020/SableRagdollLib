@@ -50,9 +50,9 @@ public class RagdollControlClient {
             return;
         }
         Input input = event.getInput();
-        var player = event.getEntity();
-        // 世界方向：forward 按玩家朝向旋转，strafe 为左方向
-        double yaw = Math.toRadians(player.getYRot());
+        var camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+        // 世界方向：forward 按摄像机朝向旋转，strafe 为左方向
+        double yaw = Math.toRadians(camera.getYRot());
         double forwardX = -Math.sin(yaw);
         double forwardZ = Math.cos(yaw);
         double strafeX = Math.cos(yaw);
@@ -83,8 +83,9 @@ public class RagdollControlClient {
             return;
         }
         grab = SableRagdollLibClient.GRAB.isDown();
+        var camera = mc.gameRenderer.getMainCamera();
         mc.getConnection().send(new ServerboundCustomPayloadPacket(
                 new ServerboundRagdollControlInputPacket(
-                        moveX, moveZ, moving, mc.player.getYRot(), mc.player.getXRot(), jumping, grab)));
+                        moveX, moveZ, moving, camera.getYRot(), camera.getXRot(), jumping, grab)));
     }
 }

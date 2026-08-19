@@ -1,15 +1,20 @@
 package com.gly091020.SableRagdollLib.entity;
 
+import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.ScheduleManager;
+import com.gly091020.SableRagdollLib.api.control.PartRole;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.mixinhelpers.camera.new_camera_types.SableCameraTypes;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializer;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
@@ -25,8 +30,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 public class PartSeat extends Entity {
     /** 主子世界 UUID，通过实体数据同步到客户端（仅服务端可见的字段客户端拿不到）。 */
@@ -47,6 +51,10 @@ public class PartSeat extends Entity {
      */
     private UUID pendingPassengerUUID;
 
+    private static final EntityDataAccessor<Map<PartRole, UUID>> PART_ROLE =
+            SynchedEntityData.defineId(PartSeat.class, SableRagdollLib.PART_ROLES.get());
+    private Map<PartRole, UUID> partRoles;
+
     public PartSeat(EntityType<PartSeat> type, Level level) {
         super(type, level);
     }
@@ -55,11 +63,15 @@ public class PartSeat extends Entity {
         this.main = main;
         this.mainUUID = main.getUniqueId();
         this.entityData.set(DATA_MAIN_UUID, Optional.of(this.mainUUID));
+        var rag = RagdollManager.get(main);
+        if(rag != null)
+            entityData.set(PART_ROLE, rag.getPartRoles());
     }
 
     @Override
     protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
         builder.define(DATA_MAIN_UUID, Optional.empty());
+        builder.define(PART_ROLE, Map.of());
     }
 
     @Override
@@ -78,6 +90,8 @@ public class PartSeat extends Entity {
         if (DATA_MAIN_UUID.equals(key)) {
             this.mainUUID = this.entityData.get(DATA_MAIN_UUID).orElse(null);
         }
+        if(PART_ROLE.equals(key))
+            partRoles = entityData.get(PART_ROLE);
     }
 
     @Override
@@ -220,12 +234,16 @@ public class PartSeat extends Entity {
     @Override
     public @NotNull Vec3 getPassengerRidingPosition(Entity entity) {
         if(entity instanceof Player)
-            return position().add(0, -entity.getBbHeight() / 2, 0);
+            return position().add(0, -entity.getBbHeight() / 4, 0);
         return position().add(0, -entity.getBbHeight(), 0);
     }
 
     public UUID getMainUUID() {
         var uuid = this.entityData.get(DATA_MAIN_UUID).orElse(null);
         return uuid != null ? uuid : mainUUID;
+    }
+
+    public Map<PartRole, UUID> getPartRoles() {
+        return partRoles == null ? Collections.emptyMap() : partRoles;
     }
 }

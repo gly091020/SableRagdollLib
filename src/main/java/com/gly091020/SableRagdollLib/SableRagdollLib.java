@@ -1,6 +1,7 @@
 package com.gly091020.SableRagdollLib;
 
 import com.gly091020.SableRagdollLib.api.RagdollDragManager;
+import com.gly091020.SableRagdollLib.api.control.PartRole;
 import com.gly091020.SableRagdollLib.api.control.RagdollControlManager;
 import com.gly091020.SableRagdollLib.api.control.RagdollPartRecognizerRegistry;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
@@ -15,7 +16,11 @@ import com.gly091020.SableRagdollLib.network.*;
 import com.gly091020.SableRagdollLib.test.TestMain;
 import me.shedaniel.autoconfig.AutoConfig;
 import me.shedaniel.autoconfig.serializer.Toml4jConfigSerializer;
+import net.minecraft.core.UUIDUtil;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.syncher.EntityDataSerializer;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.InteractionResult;
@@ -46,6 +51,11 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @Mod(SableRagdollLib.MODID)
 public class SableRagdollLib {
@@ -53,6 +63,7 @@ public class SableRagdollLib {
     public static SableRagdollLibConfig config;
 
     public static DeferredRegister<EntityType<?>> ENTITY_TYPES = DeferredRegister.create(Registries.ENTITY_TYPE, MODID);
+    public static DeferredRegister<EntityDataSerializer<?>> ENTITY_DATA_SERIALIZERS = DeferredRegister.create(NeoForgeRegistries.ENTITY_DATA_SERIALIZERS, MODID);
     public static DeferredHolder<EntityType<?>, EntityType<PartSeat>> PART_SEAT = ENTITY_TYPES.register("part_seat", r ->
             EntityType.Builder.of(PartSeat::new, MobCategory.MISC)
                     .sized(0.0F, 0.0F)
@@ -60,12 +71,17 @@ public class SableRagdollLib {
                     .updateInterval(1)
                     .build("part_seat")
     );
+    public static DeferredHolder<EntityDataSerializer<?>, EntityDataSerializer<Map<PartRole, UUID>>> PART_ROLES = ENTITY_DATA_SERIALIZERS.register("part_roles", r ->
+            EntityDataSerializer.forValueType(
+                    ByteBufCodecs.map(HashMap::new, PartRole.STREAM_CODEC, UUIDUtil.STREAM_CODEC)
+    ));
 
     public SableRagdollLib(IEventBus bus){
         config = AutoConfig.register(SableRagdollLibConfig.class, Toml4jConfigSerializer::new).getConfig();
         if(!FMLEnvironment.production)
             TestMain.init(bus);
         ENTITY_TYPES.register(bus);
+        ENTITY_DATA_SERIALIZERS.register(bus);
         bus.addListener(Network::onRegisterPayloadHandlers);
     }
 

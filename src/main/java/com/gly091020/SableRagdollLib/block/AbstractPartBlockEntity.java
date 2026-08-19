@@ -15,6 +15,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.ryanhcode.sable.api.physics.constraint.ConstraintJointAxis;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
+import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.companion.math.JOMLConversion;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
@@ -57,6 +58,8 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
 
     @Nullable
     private UUID entityUUID;
+    @Nullable
+    private UUID subLevelUUID;
     public AbstractPartBlockEntity(BlockEntityType<? extends AbstractPartBlockEntity> entityType,
                                    BlockPos pos, BlockState state) {
         super(entityType, pos, state);
@@ -293,5 +296,14 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
             }
         }
         return null;
+    }
+
+    public @Nullable UUID getSubLevelUUID() {
+        if(subLevelUUID == null){
+            var sub = SableCompanion.INSTANCE.getContaining(this);
+            if(sub == null)return null;
+            subLevelUUID = sub.getUniqueId();
+        }
+        return subLevelUUID;
     }
 }

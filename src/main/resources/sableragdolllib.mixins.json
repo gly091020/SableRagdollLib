@@ -11,6 +11,7 @@
     "ProjectileUtilMixin"
   ],
   "client": [
+    "CameraMixin"
   ],
   "injectors": {
     "defaultRequire": 1

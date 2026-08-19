@@ -130,5 +130,19 @@ public class SableRagdollLibClient {
         public static void onInteractBlock(PlayerInteractEvent.LeftClickBlock event){
             if(RagdollDragClient.isDragging())event.setCanceled(true);
         }
+
+        @SubscribeEvent
+        public static void onRenderBlockSelect(RenderHighlightEvent.Block event){
+            var player = Minecraft.getInstance().player;
+            if(player == null)return;
+            if(player.getVehicle() instanceof PartSeat)event.setCanceled(true);
+        }
+
+        @SubscribeEvent
+        public static void onRenderPlayerHead(RenderHandEvent event){
+            var player = Minecraft.getInstance().player;
+            if(player == null)return;
+            if(player.getVehicle() instanceof PartSeat)event.setCanceled(true);
+        }
     }
 }
