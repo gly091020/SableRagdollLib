@@ -3,6 +3,8 @@ package com.gly091020.SableRagdollLib.network;
 import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.control.RagdollControlManager;
+import com.gly091020.SableRagdollLib.compat.player_ragdoll.PlayerRagdollUtil;
+import com.gly091020.SableRagdollLib.compat.util.CompatMods;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -22,9 +24,15 @@ public record ServerboundSwitchControlModePacket() implements CustomPacketPayloa
     }
 
     public void handle(IPayloadContext context) {
-        if(RagdollControlManager.get(context.player()) != null)
-            RagdollControlManager.stop(context.player());
+        var player = (ServerPlayer) context.player();
+        if(RagdollControlManager.get(player) != null)
+            RagdollControlManager.stop(player);
         else {
+            if(CompatMods.PLAYER_RAGDOLL && PlayerRagdollUtil.isRagdoll(player)){
+                var session = PlayerRagdollUtil.startControl(player);
+                if(session != null)return;
+            }
+
             if(!(context.player().getVehicle() instanceof PartSeat partSeat))return;
             var rag = RagdollManager.get(context.player().level(), partSeat.getMainUUID());
             if(rag == null)return;

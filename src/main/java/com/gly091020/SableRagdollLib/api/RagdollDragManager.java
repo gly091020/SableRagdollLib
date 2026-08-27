@@ -59,7 +59,7 @@ public class RagdollDragManager {
     /** 目标点离玩家眼睛的最大距离，防止把目标发送到任意远处 */
     private static final double MAX_TARGET_DISTANCE = 5;
     /** 线性电机刚度（×质量，N/m 量级）：越小绳子感越明显、越容易滞后，越大越跟手 */
-    private static final double STIFFNESS = 100;
+    private static final double STIFFNESS = 300;
     /** 线性电机阻尼（×质量）：防止来回振荡 */
     private static final double DAMPING = 20;
     /** 线性电机最大力（×质量）：保证拉得动布娃娃，但不会压过地面接触 */

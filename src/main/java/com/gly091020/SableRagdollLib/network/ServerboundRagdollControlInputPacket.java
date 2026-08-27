@@ -18,8 +18,14 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * pitch 用于抓取射线定方向，jumping 为空格键状态（服务端按上升沿触发跳跃，
  * 按住不会连跳），grab 为抓取键（左 Alt）按住状态（服务端按上升沿切换
  * 抓取/取消，按住不会重复触发）。
+ * firstPerson 为客户端当前是否第一人称视角，targetX/targetY/targetZ 为
+ * 客户端用摄像机位置沿视线方向（含 pitch/yaw）算好的抬手目标世界坐标：
+ * 第一人称时服务端直接把它换算成身体局部抬手目标，避免用俯仰角套公式
+ * 产生的偏移。
  */
-public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boolean moving, float yaw, float pitch, boolean jumping, boolean grab) implements CustomPacketPayload {
+public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boolean moving, float yaw, float pitch,
+                                                   boolean jumping, boolean grab, boolean firstPerson,
+                                                   float targetX, float targetY, float targetZ) implements CustomPacketPayload {
 
     public static final Type<ServerboundRagdollControlInputPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(SableRagdollLib.MODID, "ragdoll_control_input"));
@@ -40,12 +46,17 @@ public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boo
         buf.writeFloat(packet.pitch());
         buf.writeBoolean(packet.jumping());
         buf.writeBoolean(packet.grab());
+        buf.writeBoolean(packet.firstPerson());
+        buf.writeFloat(packet.targetX());
+        buf.writeFloat(packet.targetY());
+        buf.writeFloat(packet.targetZ());
     }
 
     private static ServerboundRagdollControlInputPacket decode(FriendlyByteBuf buf) {
         return new ServerboundRagdollControlInputPacket(
                 buf.readFloat(), buf.readFloat(), buf.readBoolean(),
-                buf.readFloat(), buf.readFloat(), buf.readBoolean(), buf.readBoolean());
+                buf.readFloat(), buf.readFloat(), buf.readBoolean(), buf.readBoolean(),
+                buf.readBoolean(), buf.readFloat(), buf.readFloat(), buf.readFloat());
     }
 
     public void handle(IPayloadContext context) {
@@ -56,7 +67,8 @@ public record ServerboundRagdollControlInputPacket(float moveX, float moveZ, boo
         context.enqueueWork(() -> {
             var session = RagdollControlManager.get(player);
             if (session != null) {
-                session.updateInput(moveX(), moveZ(), moving(), yaw(), pitch(), jumping(), grab());
+                session.updateInput(moveX(), moveZ(), moving(), yaw(), pitch(), jumping(), grab(),
+                        firstPerson(), targetX(), targetY(), targetZ());
             }
         });
     }

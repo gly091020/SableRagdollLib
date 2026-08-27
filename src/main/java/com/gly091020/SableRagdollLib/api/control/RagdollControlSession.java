@@ -28,11 +28,13 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -134,6 +136,7 @@ public class RagdollControlSession {
     private static final double GRAB_ANGULAR_MAX_TORQUE = 200;
     /** 抓取探测距离（方块）：从手掌底部中心沿手的正方向探测 */
     private static final double GRAB_REACH = 0.5;
+    private static final double MAIN_PERSON_GRAB_REACH = 1.5;
     /** 射线起点往手后方缩进（方块）：手贴着物体时也能命中它，而不是从表面正中央漏过去 */
     private static final double GRAB_RAY_INSET = 0.05;
     /** 命中点低于手掌超过该值（方块）就视为地面/脚下，不算抓取目标 */
@@ -149,7 +152,10 @@ public class RagdollControlSession {
     private static final double MAX_LIFT = 2.0;
 
     private final ServerPlayer player;
-    private final Ragdoll ragdoll;
+    /** 会话覆盖的全部子级（create 时从布娃娃取得，会话期间持有引用） */
+    private final List<ServerSubLevel> subLevels;
+    /** 主部件（旋转/抬升时的参考中心，保持与 Ragdoll.rotate 一致） */
+    private final ServerSubLevel mainSub;
     private final ServerSubLevelContainer container;
     private final ServerSubLevel body;
     private final ServerSubLevel leftLeg;
@@ -183,9 +189,14 @@ public class RagdollControlSession {
     private boolean prevJumpHeld;
     /** 跳跃后剩余的空中刻数：空中暂停迈步 */
     private int jumpAirTicks;
-    /** 客户端输入：玩家摄像机俯仰角（度，-90 上 / +90 下）。
-     *  抓取方向已改为按手的正方向，此字段暂未使用（保留备用）。 */
+    /** 客户端输入：玩家摄像机俯仰角（度，-90 上 / +90 下）。 */
     private float inputPitch;
+    /** 客户端输入：是否第一人称视角（第一人称时抬手目标用客户端算好的视线目标点） */
+    private boolean inputFirstPerson;
+    /** 客户端输入：抬手目标世界坐标（客户端用摄像机位置沿视线方向算好，第一人称时使用） */
+    private float inputTargetX;
+    private float inputTargetY;
+    private float inputTargetZ;
     /** 客户端输入：是否按住抓取键（左 Alt） */
     private boolean inputGrab;
     /** 上一刻抓取键状态：用于上升沿/下降沿切换状态机 */
@@ -243,11 +254,13 @@ public class RagdollControlSession {
     /** 受伤眩晕剩余刻数：>0 时忽略玩家输入，每刻递减 */
     private int stunTicks;
 
-    private RagdollControlSession(ServerPlayer player, Ragdoll ragdoll, ServerSubLevelContainer container,
-                                  ServerSubLevel body, ServerSubLevel leftLeg, ServerSubLevel rightLeg,
-                                  ServerSubLevel leftArm, ServerSubLevel rightArm, ServerSubLevel head) {
+    private RagdollControlSession(ServerPlayer player, List<ServerSubLevel> subLevels, ServerSubLevel mainSub,
+                                  ServerSubLevelContainer container, ServerSubLevel body, ServerSubLevel leftLeg,
+                                  ServerSubLevel rightLeg, ServerSubLevel leftArm, ServerSubLevel rightArm,
+                                  ServerSubLevel head) {
         this.player = player;
-        this.ragdoll = ragdoll;
+        this.subLevels = subLevels;
+        this.mainSub = mainSub;
         this.container = container;
         this.body = body;
         this.leftLeg = leftLeg;
@@ -255,6 +268,34 @@ public class RagdollControlSession {
         this.leftArm = leftArm;
         this.rightArm = rightArm;
         this.head = head;
+    }
+
+    @Nullable
+    public static RagdollControlSession create(ServerPlayer player,
+                                               ServerSubLevel body, ServerSubLevel leftLeg,
+                                               ServerSubLevel rightLeg, ServerSubLevel leftArm, ServerSubLevel rightArm,
+                                               ServerSubLevel head){
+        var level = (ServerLevel)player.level();
+        var c = ServerSubLevelContainer.getContainer(level);
+        if(c == null)return null;
+        var session = new RagdollControlSession(
+                player,
+                List.of(body, leftLeg, rightLeg, leftArm, rightArm, head),
+                body,
+                c,
+                body,
+                leftLeg,
+                rightLeg,
+                leftArm,
+                rightArm,
+                head
+        );
+        session.standUpIfTilted();
+        if (!session.initGround()) {
+            session.dispose();
+            return null;
+        }
+        return session;
     }
 
     /**
@@ -273,11 +314,13 @@ public class RagdollControlSession {
             return null;
         }
 
+        ServerSubLevel mainSub = null;
         AbstractPartBlockEntity bodyBE = null;
         for (var sub : subLevels) {
             if (sub.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity be
                     && be.getPartData() != null && be.getPartData().isMain()) {
                 bodyBE = be;
+                mainSub = sub;
                 break;
             }
         }
@@ -309,7 +352,7 @@ public class RagdollControlSession {
                 byName.get(roles.get(PartRole.LEFT_ARM)),
                 byName.get(roles.get(PartRole.RIGHT_ARM)));
         RagdollControlSession session = new RagdollControlSession(
-                player, ragdoll, container, body,
+                player, subLevels, mainSub, container, body,
                 byName.get(roles.get(PartRole.LEFT_LEG)),
                 byName.get(roles.get(PartRole.RIGHT_LEG)),
                 arms[0], arms[1],
@@ -402,8 +445,12 @@ public class RagdollControlSession {
      * 客户端输入入口：由服务端数据包处理器调用。
      * moveX/moveZ 为世界坐标下的水平移动方向，yaw/pitch 为玩家摄像机朝向
      * （世界角度，度），jumping 为跳跃键按住状态，grab 为抓取键（左 Alt）按住状态。
+     * firstPerson 为客户端当前是否第一人称视角，targetX/targetY/targetZ 为客户端
+     * 算好的抬手目标世界坐标（第一人称时按它换算身体局部抬手目标）。
      */
-    public void updateInput(float moveX, float moveZ, boolean moving, float yaw, float pitch, boolean jumping, boolean grab) {
+    public void updateInput(float moveX, float moveZ, boolean moving, float yaw, float pitch,
+                            boolean jumping, boolean grab, boolean firstPerson,
+                            float targetX, float targetY, float targetZ) {
         this.inputMoveX = moveX;
         this.inputMoveZ = moveZ;
         this.inputMoving = moving;
@@ -411,6 +458,10 @@ public class RagdollControlSession {
         this.inputPitch = pitch;
         this.inputJumping = jumping;
         this.inputGrab = grab;
+        this.inputFirstPerson = firstPerson;
+        this.inputTargetX = targetX;
+        this.inputTargetY = targetY;
+        this.inputTargetZ = targetZ;
     }
 
     /**
@@ -458,7 +509,7 @@ public class RagdollControlSession {
         if (!player.isAlive() || player.level() != body.getLevel()) {
             return false;
         }
-        if (!ragdoll.isAlive() || !ragdoll.isLoad()) {
+        if (!allSubLevelsValid()) {
             return false;
         }
         if (body.isRemoved()) {
@@ -466,6 +517,19 @@ public class RagdollControlSession {
         }
         if (stunTicks <= 0 && (groundJoint == null || !groundJoint.isValid())) {
             return false;
+        }
+        return true;
+    }
+
+    /** 会话持有的所有子级是否都还在（等价于 Ragdoll.isAlive() && isLoad() 的引用检查）。 */
+    private boolean allSubLevelsValid() {
+        if (subLevels.isEmpty()) {
+            return false;
+        }
+        for (ServerSubLevel sub : subLevels) {
+            if (sub.isRemoved()) {
+                return false;
+            }
         }
         return true;
     }
@@ -520,12 +584,47 @@ public class RagdollControlSession {
         Vector3d euler = bodyOri.getEulerAnglesXYZ(new Vector3d());
         Quaterniond target = new Quaterniond().rotationY(euler.y);
         Quaterniond delta = bodyOri.conjugate().mul(target);
-        ragdoll.rotate(delta);
+        rotateAll(delta);
 
         double lowest = lowestPointY();
         double lift = Math.min(MAX_LIFT, Math.max(0, groundRef + 0.05 - lowest));
         if (lift > 0) {
-            ragdoll.move(new Vector3d(0, lift, 0), false);
+            moveAll(new Vector3d(0, lift, 0));
+        }
+    }
+
+    /** 把全部子级绕主部件中心旋转（与 Ragdoll.rotate 相同的 teleport 逻辑）。 */
+    private void rotateAll(Quaterniond rotation) {
+        if (mainSub == null || mainSub.isRemoved()) {
+            return;
+        }
+        var pipeline = container.physicsSystem().getPipeline();
+        Vector3d center = new Vector3d(mainSub.logicalPose().position());
+        for (ServerSubLevel sub : subLevels) {
+            if (sub.isRemoved()) {
+                continue;
+            }
+            var oldPose = sub.logicalPose();
+            Vector3d pos = new Vector3d(oldPose.position());
+            Vector3d offset = pos.sub(center);
+            rotation.transform(offset);
+            Vector3d newPos = new Vector3d(center).add(offset);
+            Quaterniond newRotation = new Quaterniond(oldPose.orientation());
+            newRotation.mul(rotation);
+            pipeline.teleport(sub, newPos, newRotation);
+        }
+    }
+
+    /** 把全部子级整体平移（世界坐标偏移，与 Ragdoll.move(offset, false) 相同）。 */
+    private void moveAll(Vector3d offset) {
+        var pipeline = container.physicsSystem().getPipeline();
+        for (ServerSubLevel sub : subLevels) {
+            if (sub.isRemoved()) {
+                continue;
+            }
+            var pose = sub.logicalPose();
+            Vector3d newPosition = new Vector3d(pose.position()).add(offset);
+            pipeline.teleport(sub, newPosition, pose.orientation());
         }
     }
 
@@ -543,7 +642,7 @@ public class RagdollControlSession {
     /** 所有部件最低点的世界 Y（粗略减半格）。 */
     private double lowestPointY() {
         double min = Double.MAX_VALUE;
-        for (ServerSubLevel sub : ragdoll.getSublevels()) {
+        for (ServerSubLevel sub : subLevels) {
             var pose = sub.logicalPose();
             double y = pose.transformPosition(pose.rotationPoint(), new Vector3d()).y - 0.5;
             min = Math.min(min, y);
@@ -796,7 +895,7 @@ public class RagdollControlSession {
                 ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty());
         if (ctx instanceof ClipContextExtension ext) {
             // 只排除布娃娃自己的子级：clip 会检测其他物理结构
-            ext.sable$setSubLevelIgnoring(sub -> ragdoll.getSublevels().contains(sub));
+            ext.sable$setSubLevelIgnoring(subLevels::contains);
         }
         BlockHitResult hit = level.clip(ctx);
         if (hit.getType() != HitResult.Type.BLOCK) {
@@ -832,7 +931,7 @@ public class RagdollControlSession {
                 new Vec3(x, refY - 24.0, z),
                 ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty());
         if (ctx instanceof ClipContextExtension ext) {
-            ext.sable$setSubLevelIgnoring(sub -> ragdoll.getSublevels().contains(sub));
+            ext.sable$setSubLevelIgnoring(subLevels::contains);
         }
         BlockHitResult hit = level.clip(ctx);
         if (hit.getType() != HitResult.Type.BLOCK) {
@@ -1104,10 +1203,30 @@ public class RagdollControlSession {
      * 再向前伸"臂长"。这样手臂恰好转到与身体垂直（水平前伸，相对身体正好 90°），
      * 不会再出现"手掌初始 Y + 臂长"超过肩高、手臂抬过头的情况；
      * 高度按各模型手臂位置自适应，不同模型不用调参。
+     * 第一人称时抬手目标改为客户端算好的视线目标点（见 {@link #firstPersonTargetRel}）。
      */
     private Vector3d raisedRelOffset(Vector3d palmRel, ServerSubLevel arm) {
+        if (inputFirstPerson) {
+            return firstPersonTargetRel(arm);
+        }
         double len = armLength(arm);
         return new Vector3d(palmRel.x, shoulderRelOffset(arm).y, palmRel.z + len);
+    }
+
+    /** 第一人称抬手目标（身体局部坐标）：客户端上报的视线目标点相对身体质心的
+     *  局部向量（目标点由客户端用摄像机位置沿视线方向算出，含 pitch/yaw，
+     *  直接换算无偏移）。目标长度限幅，防止玩家离布娃娃过远时手臂被拉飞。 */
+    private Vector3d firstPersonTargetRel(ServerSubLevel arm) {
+        var bodyPose = body.logicalPose();
+        Vector3d bodyCenter = bodyPose.transformPosition(bodyPose.rotationPoint(), new Vector3d());
+        Vector3d rel = new Vector3d(inputTargetX, inputTargetY, inputTargetZ).sub(bodyCenter);
+        Vector3d local = bodyPose.orientation().conjugate(new Quaterniond()).transform(rel, new Vector3d());
+        double maxLen = Math.max(2.0, armLength(arm) * 2);
+        double len = local.length();
+        if (len > maxLen) {
+            local.mul(maxLen / len);
+        }
+        return local;
     }
 
     /** 肩部（手臂部件包围盒上端）相对身体质心的身体局部坐标：抬手目标以此定高度。 */
@@ -1298,17 +1417,18 @@ public class RagdollControlSession {
                 palmCenter.x - dir.x * GRAB_RAY_INSET,
                 palmCenter.y - dir.y * GRAB_RAY_INSET,
                 palmCenter.z - dir.z * GRAB_RAY_INSET);
+        final double gr = inputFirstPerson ? MAIN_PERSON_GRAB_REACH : GRAB_REACH;
         Vector3d end = new Vector3d(
-                origin.x + dir.x * (GRAB_REACH + GRAB_RAY_INSET),
-                origin.y + dir.y * (GRAB_REACH + GRAB_RAY_INSET),
-                origin.z + dir.z * (GRAB_REACH + GRAB_RAY_INSET));
+                origin.x + dir.x * (gr + GRAB_RAY_INSET),
+                origin.y + dir.y * (gr + GRAB_RAY_INSET),
+                origin.z + dir.z * (gr + GRAB_RAY_INSET));
         ClipContext ctx = new ClipContext(
                 new Vec3(origin.x, origin.y, origin.z),
                 new Vec3(end.x, end.y, end.z),
                 ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty());
         if (ctx instanceof ClipContextExtension ext) {
             // 只排除布娃娃自己的子级：其它布娃娃/物理结构都可以被抓
-            ext.sable$setSubLevelIgnoring(sub -> ragdoll.getSublevels().contains(sub));
+            ext.sable$setSubLevelIgnoring(subLevels::contains);
         }
         BlockHitResult hit = body.getLevel().clip(ctx);
         if (hit.getType() != HitResult.Type.BLOCK) {
@@ -1350,6 +1470,15 @@ public class RagdollControlSession {
      * </ul>
      */
     private void applyGrabMotors() {
+        // 第一人称：抬手目标每刻按客户端上报的视线目标点重算（视线移动时持续跟随）
+        if (inputFirstPerson && (grabState == GRAB_REACHING || grabState == GRAB_RAISED || grabState == GRAB_HOLDING)) {
+            if (grabHandA != null && !grabHandA.isRemoved()) {
+                raiseFinalRelA.set(firstPersonTargetRel(grabHandA));
+            }
+            if (grabHandB != null && !grabHandB.isRemoved()) {
+                raiseFinalRelB.set(firstPersonTargetRel(grabHandB));
+            }
+        }
         // 抬手电机：按住前伸、抓取后保持
         applyGrabMotor(raiseJointA, grabHandA, raiseTargetRelA, raiseFinalRelA, GRAB_TARGET_STEP, false);
         applyGrabMotor(raiseJointB, grabHandB, raiseTargetRelB, raiseFinalRelB, GRAB_TARGET_STEP, false);

@@ -1,10 +1,10 @@
 package com.gly091020.SableRagdollLib.block;
 
-import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.mojang.serialization.MapCodec;
 import dev.ryanhcode.sable.api.block.BlockWithSubLevelCollisionCallback;
 import dev.ryanhcode.sable.api.physics.callback.BlockSubLevelCollisionCallback;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.EntityCollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.NotNull;
@@ -41,9 +42,24 @@ public abstract class AbstractPartBlock extends BaseEntityBlock implements Block
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext collisionContext) {
+        if(!canSelect(level, pos, collisionContext))return Shapes.empty();
+        return getCollisionShape(state, level, pos, collisionContext);
+    }
+
+    @Override
+    protected VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext collisionContext) {
         if(level.getBlockEntity(pos) instanceof AbstractPartBlockEntity blockEntity)
             return blockEntity.getShape();
         return Shapes.block();
+    }
+
+    private boolean canSelect(BlockGetter level, BlockPos pos, CollisionContext context) {
+        if (context instanceof EntityCollisionContext entityContext
+                && entityContext.getEntity() instanceof Player player &&
+                level.getBlockEntity(pos) instanceof AbstractPartBlockEntity blockEntity) {
+            return !player.is(blockEntity.getEntity());
+        }
+        return true;
     }
 
     @Override

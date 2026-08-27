@@ -6,15 +6,10 @@ import com.gly091020.SableRagdollLib.api.ScheduleManager;
 import com.gly091020.SableRagdollLib.api.control.PartRole;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
-import dev.ryanhcode.sable.mixinhelpers.camera.new_camera_types.SableCameraTypes;
 import dev.ryanhcode.sable.sublevel.SubLevel;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.syncher.EntityDataAccessor;
-import net.minecraft.network.syncher.EntityDataSerializer;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
@@ -26,8 +21,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -42,7 +35,6 @@ public class PartSeat extends Entity {
     private UUID mainUUID;
 
     private Entity onEntity;
-    private boolean cameraSet = false;
 
     /**
      * 玩家乘客的 UUID，仅在从存档读取时设置。
@@ -152,7 +144,6 @@ public class PartSeat extends Entity {
         }
 
         if(level().isClientSide){
-            handleClient();
             return;
         }
 
@@ -182,17 +173,6 @@ public class PartSeat extends Entity {
                 if(rag != null)rag.remove();
             }
             ScheduleManager.scheduleDelayed((ServerLevel) level(), 2, this::discard);
-        }
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public void handleClient(){
-        if(cameraSet)return;
-        if(Minecraft.getInstance().player != null &&
-                onEntity instanceof Player player &&
-                player.is(Minecraft.getInstance().player)) {
-            Minecraft.getInstance().options.setCameraType(SableCameraTypes.SUB_LEVEL_VIEW_UNLOCKED);
-            cameraSet = true;
         }
     }
 

@@ -44,6 +44,16 @@ public final class RagdollControlManager {
         return session;
     }
 
+    public static RagdollControlSession start(ServerPlayer player, RagdollControlSession session){
+        stop(player);
+        if (player == null || session == null) {
+            return null;
+        }
+        SESSIONS.put(player.getUUID(), session);
+        sendState(player, true);
+        return session;
+    }
+
     public static RagdollControlSession get(Player player) {
         return player == null ? null : SESSIONS.get(player.getUUID());
     }

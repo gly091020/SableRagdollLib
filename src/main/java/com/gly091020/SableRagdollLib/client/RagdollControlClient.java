@@ -1,11 +1,11 @@
 package com.gly091020.SableRagdollLib.client;
 
 import com.gly091020.SableRagdollLib.SableRagdollLibClient;
-import com.gly091020.SableRagdollLib.client.RagdollGrabRayRenderer;
 import com.gly091020.SableRagdollLib.network.ServerboundRagdollControlInputPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.Input;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
 
 /**
@@ -18,6 +18,9 @@ import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
  * </ul>
  */
 public class RagdollControlClient {
+    /** 抬手目标探测距离（方块）：从摄像机位置沿视线方向（含 pitch/yaw）延伸 */
+    private static final double AIM_REACH = 2.0;
+
     private static boolean controlling = false;
     private static float moveX;
     private static float moveZ;
@@ -84,8 +87,19 @@ public class RagdollControlClient {
         }
         grab = SableRagdollLibClient.GRAB.isDown();
         var camera = mc.gameRenderer.getMainCamera();
+        Vec3 camPos = camera.getPosition();
+        double pitchRad = Math.toRadians(camera.getXRot());
+        double yawRad = Math.toRadians(camera.getYRot());
+        // 视线方向单位向量（Minecraft 约定：yaw 0 = +Z，pitch 负 = 抬头）
+        Vec3 dir = new Vec3(
+                -Math.sin(yawRad) * Math.cos(pitchRad),
+                -Math.sin(pitchRad),
+                Math.cos(yawRad) * Math.cos(pitchRad));
+        Vec3 target = camPos.add(dir.scale(AIM_REACH));
         mc.getConnection().send(new ServerboundCustomPayloadPacket(
                 new ServerboundRagdollControlInputPacket(
-                        moveX, moveZ, moving, camera.getYRot(), camera.getXRot(), jumping, grab)));
+                        moveX, moveZ, moving, camera.getYRot(), camera.getXRot(), jumping, grab,
+                        mc.options.getCameraType().isFirstPerson(),
+                        (float) target.x, (float) target.y, (float) target.z)));
     }
 }
