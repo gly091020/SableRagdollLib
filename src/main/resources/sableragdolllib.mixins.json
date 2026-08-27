@@ -5,14 +5,14 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "EntityPushMixin",
-    "EntitySubLevelRotationHelperMixin",
     "GetPhysicsDataBEMixin",
     "LevelChunkMixin",
     "LivingEntityMixinMixin",
     "ProjectileUtilMixin"
   ],
   "client": [
-    "CameraMixin"
+    "CameraMixin",
+    "EntitySubLevelRotationHelperMixin"
   ],
   "injectors": {
     "defaultRequire": 1
