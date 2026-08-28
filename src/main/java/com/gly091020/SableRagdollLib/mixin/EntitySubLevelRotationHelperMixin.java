@@ -17,7 +17,7 @@ import java.util.function.Function;
 public class EntitySubLevelRotationHelperMixin {
     @WrapMethod(method = "getEntityOrientation")
     private static @Nullable Quaterniond calledIfFirstPerson(Entity cameraEntity, Function<SubLevel, Pose3dc> poseProvider, float partialTicks, EntitySubLevelRotationHelper.Type type, Operation<Quaterniond> original){
-        if(cameraEntity.getVehicle() instanceof PartSeat){
+        if(cameraEntity != null && cameraEntity.getVehicle() instanceof PartSeat){
             return null;
         }
         return original.call(cameraEntity, poseProvider, partialTicks, type);
