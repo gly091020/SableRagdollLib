@@ -11,6 +11,8 @@ import com.gly091020.SableRagdollLib.command.SableRagdollLibCommand;
 import com.gly091020.SableRagdollLib.common.PartColliderBoxManager;
 import com.gly091020.SableRagdollLib.common.RagdollReloadListener;
 import com.gly091020.SableRagdollLib.common.ServerGetter;
+import com.gly091020.SableRagdollLib.compat.player_ragdoll.PlayerRagdollUtil;
+import com.gly091020.SableRagdollLib.compat.util.CompatMods;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
 import com.gly091020.SableRagdollLib.network.*;
 import com.gly091020.SableRagdollLib.test.TestMain;
@@ -80,6 +82,8 @@ public class SableRagdollLib {
         config = AutoConfig.register(SableRagdollLibConfig.class, Toml4jConfigSerializer::new).getConfig();
         if(!FMLEnvironment.production)
             TestMain.init(bus);
+        if(CompatMods.PLAYER_RAGDOLL)
+            PlayerRagdollUtil.init();
         ENTITY_TYPES.register(bus);
         ENTITY_DATA_SERIALIZERS.register(bus);
         bus.addListener(Network::onRegisterPayloadHandlers);

@@ -1,6 +1,7 @@
 package com.gly091020.SableRagdollLib.compat.jade;
 
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
+import com.gly091020.SableRagdollLib.entity.PartSeat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.EntityHitResult;
 import snownee.jade.api.BlockAccessor;
@@ -16,6 +17,8 @@ public class SableRagdollJadePlugin implements IWailaPlugin {
             var player = Minecraft.getInstance().player;
             if(accessor instanceof BlockAccessor blockAccessor && blockAccessor.getBlockEntity() instanceof AbstractPartBlockEntity blockEntity){
                 var target = blockEntity.getEntity();
+                if(target instanceof PartSeat partSeat)
+                    target = partSeat.getFirstPassenger();
                 if(target != null){
                     if(player != null && target.is(player))
                         return null;

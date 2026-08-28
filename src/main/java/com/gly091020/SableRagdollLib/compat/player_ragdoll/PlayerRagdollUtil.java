@@ -9,6 +9,7 @@ import dev.leo.sableplayerragdoll.physics.RagdollSessionManager;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -40,5 +41,9 @@ public class PlayerRagdollUtil {
     public static ServerSubLevel getSubLevel(ServerSubLevelContainer container, @Nullable UUID uuid){
         if(uuid == null)return null;
         else return (ServerSubLevel) container.getSubLevel(uuid);
+    }
+
+    public static void init(){
+        NeoForge.EVENT_BUS.register(PlayerRagdollEventHandler.class);
     }
 }

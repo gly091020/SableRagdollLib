@@ -908,9 +908,11 @@ public class RagdollControlSession {
             // 命中其他物理结构：loc 是 plotgrid 坐标，换算回世界坐标
             y = hitSub.logicalPose().transformPosition(loc).y;
         }
-        if(y - refY > 0.5) {
-            if (hitSub == null)
+        if(y - refY > 0.6) {
+            if (hitSub == null) {
+                doJump();
                 return Double.NaN;
+            }
             else
                 y = refY;
         }
@@ -1447,7 +1449,7 @@ public class RagdollControlSession {
         debugRayEnd.set(worldPos);
         debugRayHit = true;
         // 明显低于手掌的命中（抬手时很容易戳到脚边/地面）不算抓取目标
-        if (worldPos.y < palmCenter.y - GRAB_MIN_HEIGHT_DROP) {
+        if (!inputFirstPerson && worldPos.y < palmCenter.y - GRAB_MIN_HEIGHT_DROP) {
             return null;
         }
         if (hitSub != null) {
