@@ -4,6 +4,7 @@ import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.control.PartRole;
 import com.gly091020.SableRagdollLib.api.control.RagdollPartRecognizerRegistry;
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
+import com.gly091020.SableRagdollLib.entity.PartSeat;
 import dev.ryanhcode.sable.api.physics.constraint.PhysicsConstraintHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelObserver;
@@ -126,6 +127,7 @@ public class Ragdoll {
     }
 
     public void addEntity(Entity entity){
+        if(entity.getVehicle() instanceof PartSeat)return;
         var subs = getSublevels();
         var finish = false;
         for (SubLevel subLevel: subs){

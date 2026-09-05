@@ -161,6 +161,7 @@ public class SableRagdollLib {
 
         @SubscribeEvent
         public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event){
+            if(!event.getEntity().getMainHandItem().isEmpty())return;
             // 部件方块交给拖拽逻辑处理，阻止原版方块交互
             if(event.getLevel().getBlockState(event.getPos()).getBlock() instanceof AbstractPartBlock)
                 event.setCanceled(true);

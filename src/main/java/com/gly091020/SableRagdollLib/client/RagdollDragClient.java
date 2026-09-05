@@ -54,6 +54,7 @@ public class RagdollDragClient {
 
     private static void tryStart(Minecraft mc, LocalPlayer player) {
         if(player.getVehicle() instanceof PartSeat)return;
+        if(!player.getMainHandItem().isEmpty())return;
 
         var hit = mc.hitResult;
         if (hit == null || hit.getType() != HitResult.Type.BLOCK || mc.level == null) return;
