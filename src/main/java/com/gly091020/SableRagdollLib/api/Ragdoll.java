@@ -103,7 +103,8 @@ public class Ragdoll {
         for (UUID sub: subLevelUUIDList){
             var subLevel = container.getSubLevel(sub);
             if(subLevel == null || subLevel.isRemoved())continue;
-            subLevel.getPlot().getEmbeddedLevelAccessor().setBlock(BlockPos.ZERO, Blocks.AIR.defaultBlockState(), 3);
+            subLevel.markRemoved();
+            container.removeSubLevel(subLevel, SubLevelRemovalReason.REMOVED);
         }
     }
 
