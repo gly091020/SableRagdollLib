@@ -3,6 +3,7 @@ package com.gly091020.SableRagdollLib.network;
 import com.gly091020.SableRagdollLib.SableRagdollLib;
 import com.gly091020.SableRagdollLib.api.RagdollManager;
 import com.gly091020.SableRagdollLib.api.control.RagdollControlManager;
+import com.gly091020.SableRagdollLib.api.event.SwitchControlModeEvent;
 import com.gly091020.SableRagdollLib.compat.player_ragdoll.PlayerRagdollUtil;
 import com.gly091020.SableRagdollLib.compat.util.CompatMods;
 import com.gly091020.SableRagdollLib.entity.PartSeat;
@@ -11,6 +12,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record ServerboundSwitchControlModePacket() implements CustomPacketPayload {
@@ -25,6 +27,7 @@ public record ServerboundSwitchControlModePacket() implements CustomPacketPayloa
 
     public void handle(IPayloadContext context) {
         var player = (ServerPlayer) context.player();
+        if(NeoForge.EVENT_BUS.post(new SwitchControlModeEvent(player)).isCanceled())return;
         if(RagdollControlManager.get(player) != null)
             RagdollControlManager.stop(player);
         else {
