@@ -15,10 +15,11 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record ServerboundSwitchControlModePacket() implements CustomPacketPayload {
+public record ServerboundSwitchControlModePacket(boolean held) implements CustomPacketPayload {
     public static final Type<ServerboundSwitchControlModePacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SableRagdollLib.MODID, "switch_control_mode"));
     public static final StreamCodec<ByteBuf, ServerboundSwitchControlModePacket> STREAM_CODEC = StreamCodec.of(
-            (a, b) -> {}, a -> new ServerboundSwitchControlModePacket()
+            (buf, packet) -> buf.writeBoolean(packet.held()),
+            buf -> new ServerboundSwitchControlModePacket(buf.readBoolean())
     );
     @Override
     public Type<? extends CustomPacketPayload> type() {
@@ -27,13 +28,24 @@ public record ServerboundSwitchControlModePacket() implements CustomPacketPayloa
 
     public void handle(IPayloadContext context) {
         var player = (ServerPlayer) context.player();
+        var session = RagdollControlManager.get(player);
+        if (!held) {
+            if (session != null && session.isRecovering()) {
+                RagdollControlManager.stop(player);
+            }
+            return;
+        }
         if(NeoForge.EVENT_BUS.post(new SwitchControlModeEvent(player)).isCanceled())return;
-        if(RagdollControlManager.get(player) != null)
+        if(session != null) {
+            if (session.isRecovering()) {
+                return;
+            }
             RagdollControlManager.stop(player);
-        else {
+            return;
+        } else {
             if(CompatMods.PLAYER_RAGDOLL && PlayerRagdollUtil.isRagdoll(player)){
-                var session = PlayerRagdollUtil.startControl(player);
-                if(session != null)return;
+                var started = PlayerRagdollUtil.startControl(player);
+                if(started != null)return;
             }
 
             if(!(context.player().getVehicle() instanceof PartSeat partSeat))return;

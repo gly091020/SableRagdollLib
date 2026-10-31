@@ -78,8 +78,8 @@ import java.util.Set;
  * （相对重锚定后的 0，误差永远很小，也绕开 ±π 缝）。不要再用相对初始 yaw 的
  * 绝对值/累加值当 Y 电机目标，也不要让 X/Z 电机目标包含 yaw 分量。
  * <p>
- * 会话开始如果身体是躺着的，先做一次性瞬移站直（旋转到只保留当前朝向 + 抬到脚底地面），
- * 然后锁定初始支撑脚。
+ * 会话开始如果身体是躺着的，会保留当前水平朝向，用临时约束的角轴电机和竖直
+ * 线性电机把身体推回直立姿态；恢复完成前不接受移动/跳跃/抓取输入。
  * <p>
  * 会话创建依赖 {@link RagdollPartRecognizerRegistry} 的六部位识别结果；
  * 识别失败或缺少身体时创建失败返回 {@code null}。
@@ -148,10 +148,19 @@ public class RagdollControlSession {
     private static final double STEP_SIDE = 0.1;
     /** 落脚点相对地面的垂直偏移。 */
     private static final double FOOT_GROUND_OFFSET = 1.0 / 16.0;
-    /** 会话开始倾斜超过该角度就瞬移站直（度） */
-    private static final double STAND_SNAP_THRESHOLD_DEG = 20;
-    private static final double STAND_SNAP_THRESHOLD = Math.toRadians(STAND_SNAP_THRESHOLD_DEG);
-    /** 站直抬升上限，防止异常坐标把布娃娃抬飞 */
+    /** 恢复阶段的回正电机参数（×质量）。 */
+    private static final double RECOVERY_ANGULAR_STIFFNESS = 2000;
+    private static final double RECOVERY_ANGULAR_DAMPING = 90;
+    private static final double RECOVERY_ANGULAR_MAX_TORQUE = 1200;
+    /** 恢复阶段的抬升电机参数（×质量）。 */
+    private static final double RECOVERY_LINEAR_STIFFNESS = 600;
+    private static final double RECOVERY_LINEAR_DAMPING = 60;
+    private static final double RECOVERY_LINEAR_MAX_FORCE = 900;
+    /** 完全站直后脚底与起始地面的间距。 */
+    private static final double RECOVERY_GROUND_CLEARANCE = 0.05;
+    /** 倾斜角进入该范围即可提前恢复控制，不再要求完全竖直。 */
+    private static final double RECOVERY_READY_TILT = Math.toRadians(25.0);
+    /** 站直抬升上限，防止异常坐标把布娃娃抬飞。 */
     private static final double MAX_LIFT = 2.0;
 
     private final ServerPlayer player;
@@ -264,6 +273,14 @@ public class RagdollControlSession {
     private boolean disposed;
     /** 受伤眩晕剩余刻数：>0 时忽略玩家输入，每刻递减 */
     private int stunTicks;
+    /** 正在缓慢恢复直立，期间不接受移动/跳跃/抓取输入。 */
+    private boolean recovering;
+    /** 已经完成恢复并且成功建立身体约束，可以接受控制输入。 */
+    private boolean controlReady;
+    /** 恢复开始时的地面高度。 */
+    private double recoveryFloorY;
+    /** 恢复阶段身体锚点相对起始位置的抬升目标。 */
+    private double recoveryHeightTarget;
 
     private RagdollControlSession(ServerPlayer player, List<ServerSubLevel> subLevels, ServerSubLevel mainSub,
                                   ServerSubLevelContainer container, ServerSubLevel body, ServerSubLevel leftLeg,
@@ -301,8 +318,7 @@ public class RagdollControlSession {
                 rightArm,
                 head
         );
-        session.standUpIfTilted();
-        if (!session.initGround()) {
+        if (!session.beginRecovery()) {
             session.dispose();
             return null;
         }
@@ -368,8 +384,7 @@ public class RagdollControlSession {
                 byName.get(roles.get(PartRole.RIGHT_LEG)),
                 arms[0], arms[1],
                 byName.get(roles.get(PartRole.HEAD)));
-        session.standUpIfTilted();
-        if (!session.initGround()) {
+        if (!session.beginRecovery()) {
             session.dispose();
             return null;
         }
@@ -388,6 +403,10 @@ public class RagdollControlSession {
                 || (grabJointA != null && !grabJointA.isValid()) || (grabJointB != null && !grabJointB.isValid())) {
             releaseGrab();
         }
+        if (recovering) {
+            updateRecovery();
+            return;
+        }
         // 受伤眩晕：布娃娃完全失去控制瘫软，眩晕结束后站起并重建控制
         if (stunTicks > 0) {
             stunTicks--;
@@ -398,12 +417,14 @@ public class RagdollControlSession {
                 stepProgress = 0;
                 wasMoving = false;
                 jumpAirTicks = 0;
-                standUpIfTilted();
-                if (!initGround()) {
+                if (!beginRecovery()) {
                     dispose();
                     return;
                 }
             }
+            return;
+        }
+        if (!controlReady) {
             return;
         }
         // 跳跃：空格上升沿（松开→按下）触发一次，按住不会连跳；
@@ -494,6 +515,8 @@ public class RagdollControlSession {
     public void stun(int ticks) {
         ScheduleManager.scheduleDelayed((ServerLevel) player.level(), 0, () -> {
             stunTicks = Math.max(stunTicks, ticks);
+            recovering = false;
+            controlReady = false;
             releaseStance();
             removeJoint(groundJoint);
             groundJoint = null;
@@ -525,6 +548,10 @@ public class RagdollControlSession {
         return player;
     }
 
+    public boolean isRecovering() {
+        return recovering;
+    }
+
     public boolean isValid() {
         if (disposed) {
             return false;
@@ -536,6 +563,15 @@ public class RagdollControlSession {
             return false;
         }
         if (body.isRemoved()) {
+            return false;
+        }
+        if (recovering) {
+            return groundJoint != null && groundJoint.isValid();
+        }
+        if (stunTicks > 0) {
+            return true;
+        }
+        if (!controlReady) {
             return false;
         }
         if (stunTicks <= 0 && (groundJoint == null || !groundJoint.isValid())) {
@@ -596,60 +632,92 @@ public class RagdollControlSession {
     }
 
     /**
-     * 会话开始如果身体是躺着的：把整个布娃娃绕身体中心旋转到"只保留当前朝向"的直立姿态，
-     * 并抬升到旋转前的最低点高度（脚底接触的地面，不用高度图，避免室内被抬到屋顶）。
+     * 进入恢复阶段。保留身体当前水平朝向，建立临时约束后由电机推回直立；
+     * 竖直目标根据恢复开始时脚底所在的地面计算。
      */
-    private void standUpIfTilted() {
-        if (currentTilt() <= STAND_SNAP_THRESHOLD) {
+    private boolean beginRecovery() {
+        if (disposed || !allSubLevelsValid() || body.isRemoved()) {
+            return false;
+        }
+        releaseStance();
+        removeJoint(groundJoint);
+        groundJoint = null;
+        controlReady = false;
+        recoveryFloorY = lowestPointY();
+        recoveryHeightTarget = 0;
+
+        if (!initGround()) {
+            return false;
+        }
+
+        if (currentTilt() <= RECOVERY_READY_TILT) {
+            recovering = false;
+            controlReady = true;
+            return true;
+        }
+
+        recovering = true;
+        return true;
+    }
+
+    /** 用角轴电机回正、用竖直电机抬升，直到进入允许倾角。 */
+    private void updateRecovery() {
+        if (currentTilt() <= RECOVERY_READY_TILT) {
+            finishRecovery();
             return;
         }
-        double groundRef = lowestPointY();
-        Quaterniond bodyOri = new Quaterniond(body.logicalPose().orientation());
-        Vector3d euler = bodyOri.getEulerAnglesXYZ(new Vector3d());
-        Quaterniond target = new Quaterniond().rotationY(euler.y);
-        Quaterniond delta = bodyOri.conjugate().mul(target);
-        rotateAll(delta);
+        driveRecoveryMotors();
+        if (currentTilt() <= RECOVERY_READY_TILT) {
+            finishRecovery();
+        }
+    }
 
+    private void driveRecoveryMotors() {
+        if (groundJoint == null || !groundJoint.isValid()) {
+            return;
+        }
+        var bodyAnchor = body.logicalPose().transformPosition(groundPlotPos, new Vector3d());
+        double currentHeightOffset = bodyAnchor.y - groundFramePos.y;
+        double targetY = recoveryFloorY + RECOVERY_GROUND_CLEARANCE;
         double lowest = lowestPointY();
-        double lift = Math.min(MAX_LIFT, Math.max(0, groundRef + 0.05 - lowest));
-        if (lift > 0) {
-            moveAll(new Vector3d(0, lift, 0));
+        double neededLift = Math.max(0.0, targetY - lowest);
+        recoveryHeightTarget = Math.max(recoveryHeightTarget,
+                Math.min(MAX_LIFT, currentHeightOffset + neededLift));
+
+        double mass = massOf(body);
+        try {
+            groundJoint.setFrame2(groundPlotPos, new Quaterniond().rotationY(bodyYaw()));
+            groundJoint.setMotor(ConstraintJointAxis.LINEAR_X, 0,
+                    RECOVERY_LINEAR_STIFFNESS * mass, RECOVERY_LINEAR_DAMPING * mass,
+                    true, RECOVERY_LINEAR_MAX_FORCE * mass);
+            groundJoint.setMotor(ConstraintJointAxis.LINEAR_Y, recoveryHeightTarget,
+                    RECOVERY_LINEAR_STIFFNESS * mass, RECOVERY_LINEAR_DAMPING * mass,
+                    true, RECOVERY_LINEAR_MAX_FORCE * mass);
+            groundJoint.setMotor(ConstraintJointAxis.LINEAR_Z, 0,
+                    RECOVERY_LINEAR_STIFFNESS * mass, RECOVERY_LINEAR_DAMPING * mass,
+                    true, RECOVERY_LINEAR_MAX_FORCE * mass);
+            groundJoint.setMotor(ConstraintJointAxis.ANGULAR_X, 0,
+                    RECOVERY_ANGULAR_STIFFNESS * mass, RECOVERY_ANGULAR_DAMPING * mass,
+                    true, RECOVERY_ANGULAR_MAX_TORQUE * mass);
+            groundJoint.setMotor(ConstraintJointAxis.ANGULAR_Y, 0, 0, 0, false, 0);
+            groundJoint.setMotor(ConstraintJointAxis.ANGULAR_Z, 0,
+                    RECOVERY_ANGULAR_STIFFNESS * mass, RECOVERY_ANGULAR_DAMPING * mass,
+                    true, RECOVERY_ANGULAR_MAX_TORQUE * mass);
+        } catch (Exception e) {
+            LOGGER.debug("驱动恢复电机失败：", e);
         }
     }
 
-    /** 把全部子级绕主部件中心旋转（与 Ragdoll.rotate 相同的 teleport 逻辑）。 */
-    private void rotateAll(Quaterniond rotation) {
-        if (mainSub == null || mainSub.isRemoved()) {
+    private void finishRecovery() {
+        releaseStance();
+        removeJoint(groundJoint);
+        groundJoint = null;
+        if (!initGround()) {
+            dispose();
             return;
         }
-        var pipeline = container.physicsSystem().getPipeline();
-        Vector3d center = new Vector3d(mainSub.logicalPose().position());
-        for (ServerSubLevel sub : subLevels) {
-            if (sub.isRemoved()) {
-                continue;
-            }
-            var oldPose = sub.logicalPose();
-            Vector3d pos = new Vector3d(oldPose.position());
-            Vector3d offset = pos.sub(center);
-            rotation.transform(offset);
-            Vector3d newPos = new Vector3d(center).add(offset);
-            Quaterniond newRotation = new Quaterniond(oldPose.orientation());
-            newRotation.mul(rotation);
-            pipeline.teleport(sub, newPos, newRotation);
-        }
-    }
-
-    /** 把全部子级整体平移（世界坐标偏移，与 Ragdoll.move(offset, false) 相同）。 */
-    private void moveAll(Vector3d offset) {
-        var pipeline = container.physicsSystem().getPipeline();
-        for (ServerSubLevel sub : subLevels) {
-            if (sub.isRemoved()) {
-                continue;
-            }
-            var pose = sub.logicalPose();
-            Vector3d newPosition = new Vector3d(pose.position()).add(offset);
-            pipeline.teleport(sub, newPosition, pose.orientation());
-        }
+        recovering = false;
+        controlReady = true;
     }
 
     private double currentTilt() {

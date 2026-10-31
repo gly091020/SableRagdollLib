@@ -62,6 +62,8 @@ public class SableRagdollLibClient {
 
     @EventBusSubscriber(modid = SableRagdollLib.MODID, value = Dist.CLIENT)
     public static class EventHandler{
+        private static boolean switchControlHeld;
+
         @SubscribeEvent
         public static void registerClientCommands(RegisterClientCommandsEvent event) {
             SableRagdollLibClientCommand.registry(event.getDispatcher());
@@ -86,8 +88,13 @@ public class SableRagdollLibClient {
             while (OPEN_EDITOR.consumeClick()){
                 if(SableRagdollLib.hasLDLib()) EditorOpener.open();
             }
-            while (SWITCH_CONTROL.consumeClick())
-                PacketDistributor.sendToServer(new ServerboundSwitchControlModePacket());
+            while (SWITCH_CONTROL.consumeClick()) {
+            }
+            boolean held = SWITCH_CONTROL.isDown();
+            if (held != switchControlHeld) {
+                PacketDistributor.sendToServer(new ServerboundSwitchControlModePacket(held));
+                switchControlHeld = held;
+            }
             RagdollDragClient.tick();
             RagdollControlClient.tick();
         }
