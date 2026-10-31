@@ -29,7 +29,7 @@ public class PartColliderBoxManager {
                                                           RagdollRenderData.PartRenderData renderData,
                                                           RagdollHitbox.PartBox blockShape){
         var k = defFileID + "/" + Strings.join(renderData.parts().stream().map(RagdollRenderData.EveryPart::partName).toList(),
-                "|");
+                "|") + "/blacklist:" + Strings.join(renderData.blacklist(), "|");
         if(data.containsKey(k))
             return data.get(k);
         var settings = RagdollTypeRegistry.getRagdollType(type);

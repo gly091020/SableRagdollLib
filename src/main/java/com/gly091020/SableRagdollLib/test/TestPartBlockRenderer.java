@@ -31,6 +31,7 @@ public class TestPartBlockRenderer extends AbstractPartBlockRenderer<TestPartBlo
         drawLineBox(poseStack, multiBufferSource, blockEntity, 1, 1, 1);
         var renderData = blockEntity.getPartData().renderData();
         for(RagdollRenderData.EveryPart part: renderData.parts()){
+            if (renderData.isBlacklisted(part.partName())) continue;
             BlockState blockState;
             if(blockMap.containsKey(part.partName()))
                 blockState = blockMap.get(part.partName()).defaultBlockState();

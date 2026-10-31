@@ -120,6 +120,10 @@ public class EditorRagdollRenderData{
 
 
         @Configurable
+        public List<String> blacklist;
+
+
+        @Configurable
         public Vector3f transform;
 
 
@@ -134,11 +138,13 @@ public class EditorRagdollRenderData{
 
         public EditorPartRenderData(
                 List<EditorEveryPart> parts,
+                List<String> blacklist,
                 Vector3f transform,
                 Vector3f rotation,
                 Vector3f scale
         ) {
-            this.parts = parts;
+            this.parts = parts == null ? new ArrayList<>() : parts;
+            this.blacklist = blacklist == null ? new ArrayList<>() : blacklist;
             this.transform = transform;
             this.rotation = rotation;
             this.scale = scale;
@@ -148,6 +154,8 @@ public class EditorRagdollRenderData{
         public EditorPartRenderData() {
 
             this.parts = new ArrayList<>();
+
+            this.blacklist = new ArrayList<>();
 
             this.transform = new Vector3f();
 
@@ -195,6 +203,7 @@ public class EditorRagdollRenderData{
 
             return new EditorPartRenderData(
                     parts,
+                    new ArrayList<>(data.blacklist()),
                     vecToVector(data.transform()),
                     vecToVector(data.rotation()),
                     vecToVector(data.scale())
@@ -218,6 +227,7 @@ public class EditorRagdollRenderData{
 
             return new RagdollRenderData.PartRenderData(
                     list,
+                    blacklist,
                     vectorToVec(transform),
                     vectorToVec(rotation),
                     vectorToVec(scale)
