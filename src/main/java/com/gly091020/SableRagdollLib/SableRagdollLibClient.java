@@ -1,6 +1,7 @@
 package com.gly091020.SableRagdollLib;
 
 import com.gly091020.SableRagdollLib.client.RagdollControlClient;
+import com.gly091020.SableRagdollLib.client.RagdollControlDebugRenderer;
 import com.gly091020.SableRagdollLib.client.RagdollGrabRayRenderer;
 import com.gly091020.SableRagdollLib.client.RagdollDragClient;
 import com.gly091020.SableRagdollLib.client.renderer.PartSeatRenderer;
@@ -99,7 +100,11 @@ public class SableRagdollLibClient {
         @SubscribeEvent
         public static void onRenderLevel(RenderLevelStageEvent event){
             if(event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS)return;
-            RagdollGrabRayRenderer.render(event.getPoseStack(), Minecraft.getInstance().renderBuffers().bufferSource(), event.getCamera().getPosition());
+            var mc = Minecraft.getInstance();
+            RagdollGrabRayRenderer.render(event.getPoseStack(), mc.renderBuffers().bufferSource(), event.getCamera().getPosition());
+            if (mc.hasSingleplayerServer() && mc.getDebugOverlay().showDebugScreen()) {
+                RagdollControlDebugRenderer.render(event.getPoseStack(), mc.renderBuffers().bufferSource(), event.getCamera().getPosition());
+            }
         }
 
         @SubscribeEvent

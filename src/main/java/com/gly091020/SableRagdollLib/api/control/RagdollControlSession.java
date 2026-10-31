@@ -18,6 +18,7 @@ import dev.ryanhcode.sable.physics.config.dimension_physics.DimensionPhysicsData
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.server.level.ServerLevel;
@@ -28,6 +29,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaterniond;
 import org.joml.Vector3d;
@@ -55,9 +57,8 @@ import java.util.Set;
  *     <li>跳跃：空格键（客户端随输入包上报）按上升沿触发，释放支撑脚并给身体一个
  *     向上的速度（v = sqrt(2*g*h)），滞空/坠落期间暂停迈步（脚底离地即停，
  *     避免支撑脚锁在半空拖慢下落）；空中仍可水平转向/移动。</li>
- *     <li>抓取：左 Alt 键。手上拿着物品时（主手/副手任一非空）改走"持物抬手"开关：
- *     按下抬起拿物品的那只手（两只手都有物品则都抬，主手物品抬玩家主手侧的手臂），
- *     再按一次取消放下；双手都空才执行下面的抓取逻辑。按住时双手一起抬起——高度按肩部
+ *     <li>抓取：左 Alt 键。第一人称手持物品时自动抬起对应手臂；其他情况仍由 Alt
+ *     切换持物抬手。双手都空才执行下面的抓取逻辑。按住时双手一起抬起——高度按肩部
  *     定死（恰好水平 90°，不会抬过头），前伸量按各模型手臂自身长度算，
  *     手臂转到与身体垂直（水平前伸），方向由身体↔手臂约束的 motor target
  *     控制（内力不拽飞身体），不写死高度；抬手期间创建 手↔头 自由约束取消两者
@@ -145,6 +146,8 @@ public class RagdollControlSession {
     private static final double STEP_LENGTH = 1.5;
     /** 落脚点相对身体前进方向的侧向偏移（左右各偏这么多） */
     private static final double STEP_SIDE = 0.1;
+    /** 落脚点相对地面的垂直偏移。 */
+    private static final double FOOT_GROUND_OFFSET = 1.0 / 16.0;
     /** 会话开始倾斜超过该角度就瞬移站直（度） */
     private static final double STAND_SNAP_THRESHOLD_DEG = 20;
     private static final double STAND_SNAP_THRESHOLD = Math.toRadians(STAND_SNAP_THRESHOLD_DEG);
@@ -208,6 +211,7 @@ public class RagdollControlSession {
     private static final int GRAB_HOLDING = 2;
     private static final int GRAB_RAISED = 3;
     private int grabState = GRAB_IDLE;
+    private boolean firstPersonAutoRaise;
     /** 两只抓取手（左右各一，缺失时只用存在的那只） */
     private ServerSubLevel grabHandA;
     private ServerSubLevel grabHandB;
@@ -248,6 +252,13 @@ public class RagdollControlSession {
     private final Vector3d stanceFramePos = new Vector3d();
     /** 支撑脚电机目标（相对世界侧帧的位移），每刻向 0 收敛 */
     private final Vector3d stanceTargetRel = new Vector3d();
+    /** 最近一次落脚点探测，供本地 F3 调试渲染使用。 */
+    private final Vector3d footDebugRayOrigin = new Vector3d();
+    private final Vector3d footDebugRayEnd = new Vector3d();
+    private final Vector3d debugNextFoothold = new Vector3d();
+    private boolean footDebugRayValid;
+    private boolean footDebugRayHit;
+    private boolean debugNextFootholdValid;
     /** 最近一次移动方向（世界坐标，归一化），停下后保留用于迈步 */
     private final Vector3d lastDir = new Vector3d(0, 0, 1);
     private boolean disposed;
@@ -404,23 +415,34 @@ public class RagdollControlSession {
         if (jumpAirTicks > 0) {
             jumpAirTicks--;
         }
-        // 抓取状态机：
-        //   IDLE --Alt 按下, 双手有物品--> RAISED（持物那只手抬起，再按 Alt 取消）
-        //   IDLE --Alt 按下, 双手空--> REACHING（双手沿视线前伸）
-        //   REACHING --Alt 松开--> HOLDING（抓取视线方向的方块/结构，保持伸手姿势）
-        //   HOLDING --Alt 按下--> IDLE（恢复，手臂自然垂落）
-        if (inputGrab && !prevGrabHeld) {
+        boolean autoRaiseItem = inputFirstPerson && hasHandItem();
+        if (autoRaiseItem) {
             if (grabState == GRAB_IDLE) {
-                if (hasHandItem()) {
-                    startRaiseItem();
-                } else {
-                    startReach();
-                }
-            } else if (grabState == GRAB_HOLDING || grabState == GRAB_RAISED) {
+                startRaiseItem();
+                firstPersonAutoRaise = grabState == GRAB_RAISED;
+            }
+        } else if (firstPersonAutoRaise) {
+            if (grabState == GRAB_RAISED) {
                 releaseGrab();
             }
-        } else if (!inputGrab && prevGrabHeld && grabState == GRAB_REACHING) {
-            finishGrab();
+            firstPersonAutoRaise = false;
+        }
+
+        // 第一人称持物时自动抬手；其他情况仍使用 Alt 的抓取/抬手状态机。
+        if (!autoRaiseItem) {
+            if (inputGrab && !prevGrabHeld) {
+                if (grabState == GRAB_IDLE) {
+                    if (hasHandItem()) {
+                        startRaiseItem();
+                    } else {
+                        startReach();
+                    }
+                } else if (grabState == GRAB_HOLDING || grabState == GRAB_RAISED) {
+                    releaseGrab();
+                }
+            } else if (!inputGrab && prevGrabHeld && grabState == GRAB_REACHING) {
+                finishGrab();
+            }
         }
         prevGrabHeld = inputGrab;
         // 只有第一次按住 Alt（瞄准、还没松开）期间渲染抓取射线；
@@ -439,6 +461,7 @@ public class RagdollControlSession {
         applyStanceMotors();
         applyGrabMotors();
         updateGround();
+        publishDebugSnapshot();
     }
 
     /**
@@ -543,6 +566,7 @@ public class RagdollControlSession {
         releaseGrab();
         removeJoint(groundJoint);
         groundJoint = null;
+        RagdollControlDebug.remove(player.getUUID());
     }
 
     /** 创建世界↔身体跟随约束：角轴软回正电机保持直立，目标点从布娃娃当前世界位置开始。 */
@@ -639,15 +663,41 @@ public class RagdollControlSession {
         return Math.atan2(-forward.x, forward.z);
     }
 
-    /** 所有部件最低点的世界 Y（粗略减半格）。 */
+    /** 所有部件实际碰撞箱最低点的世界 Y。 */
     private double lowestPointY() {
         double min = Double.MAX_VALUE;
         for (ServerSubLevel sub : subLevels) {
-            var pose = sub.logicalPose();
-            double y = pose.transformPosition(pose.rotationPoint(), new Vector3d()).y - 0.5;
-            min = Math.min(min, y);
+            min = Math.min(min, partLowestWorldY(sub));
         }
         return min == Double.MAX_VALUE ? 0 : min;
+    }
+
+    private double partLowestWorldY(ServerSubLevel part) {
+        if (part.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity blockEntity) {
+            VoxelShape shape = blockEntity.getShape();
+            if (!shape.isEmpty()) {
+                var pose = part.logicalPose();
+                var blockOrigin = part.getPlot().getCenterBlock();
+                double min = Double.MAX_VALUE;
+                for (var box : shape.toAabbs()) {
+                    for (double x : new double[]{box.minX, box.maxX}) {
+                        for (double y : new double[]{box.minY, box.maxY}) {
+                            for (double z : new double[]{box.minZ, box.maxZ}) {
+                                var plot = new Vector3d(
+                                        blockOrigin.getX() + x,
+                                        blockOrigin.getY() + y,
+                                        blockOrigin.getZ() + z
+                                );
+                                min = Math.min(min, pose.transformPosition(plot, new Vector3d()).y);
+                            }
+                        }
+                    }
+                }
+                return min;
+            }
+        }
+        var pose = part.logicalPose();
+        return pose.transformPosition(pose.rotationPoint(), new Vector3d()).y - 0.5;
     }
 
     private boolean isMoving() {
@@ -803,7 +853,9 @@ public class RagdollControlSession {
         foothold.x += stepDir.x * STEP_LENGTH * 0.5 + side.x * sideSign * STEP_SIDE;
         foothold.z += stepDir.z * STEP_LENGTH * 0.5 + side.z * sideSign * STEP_SIDE;
         // 脚底贴方块：向下探测目标位置的实际地面顶面（不用高度图，避免室内取到屋顶）
-        foothold.y = groundTopAt(foothold.x, foothold.z, footWorld(leg).y);
+        foothold.y = groundTopAt(foothold.x, foothold.z, footWorld(leg).y) + FOOT_GROUND_OFFSET;
+        debugNextFoothold.set(foothold);
+        debugNextFootholdValid = !Double.isNaN(foothold.y);
         return foothold;
     }
 
@@ -889,6 +941,10 @@ public class RagdollControlSession {
      */
     private double groundTopAt(double x, double z, double refY) {
         var level = body.getLevel();
+        footDebugRayOrigin.set(x, refY + 1.0, z);
+        footDebugRayEnd.set(x, refY - 24.0, z);
+        footDebugRayValid = true;
+        footDebugRayHit = false;
         ClipContext ctx = new ClipContext(
                 new Vec3(x, refY + 1.0, z),
                 new Vec3(x, refY - 24.0, z),
@@ -908,6 +964,8 @@ public class RagdollControlSession {
             // 命中其他物理结构：loc 是 plotgrid 坐标，换算回世界坐标
             y = hitSub.logicalPose().transformPosition(loc).y;
         }
+        footDebugRayHit = true;
+        footDebugRayEnd.set(x, y, z);
         if(y - refY > 0.6) {
             if (hitSub == null) {
                 doJump();
@@ -916,8 +974,7 @@ public class RagdollControlSession {
             else
                 y = refY;
         }
-        if(y < refY)
-            y = Math.max(refY - 0.5f, y);
+        footDebugRayEnd.set(x, y, z);
         return y;
     }
 
@@ -1087,11 +1144,7 @@ public class RagdollControlSession {
         return !player.getMainHandItem().isEmpty() || !player.getOffhandItem().isEmpty();
     }
 
-    /**
-     * 持物抬手：手上拿着物品时按下 Alt，抬起拿物品的那只手（两只手都有物品则都抬），
-     * 再按一次 Alt 取消。复用抬手约束（身体↔手臂 + 手头免碰撞），
-     * 只给拿物品的手臂创建，另一只保持自然下垂。没有可抬的手臂时不进入该状态。
-     */
+    /** 抬起拿物品的手臂；第一人称自动触发，其他视角由 Alt 触发。 */
     private void startRaiseItem() {
         if (grabState != GRAB_IDLE) {
             return;
@@ -1551,6 +1604,39 @@ public class RagdollControlSession {
         debugRayVisible = visible;
     }
 
+    /**
+     * 仅在本地集成服务器生成调试快照；专用服务器不生成，也不经过网络包。
+     */
+    private void publishDebugSnapshot() {
+        if (player.getServer() == null || player.getServer().isDedicatedServer()) {
+            return;
+        }
+        var bodyPose = body.logicalPose();
+        var bodyAnchor = bodyPose.transformPosition(groundPlotPos, new Vector3d());
+        Vec3 stance = stanceLeg != null && stanceJoint != null && stanceJoint.isValid()
+                ? toVec(stanceFramePos) : null;
+        Vec3 left = leftLeg != null && !leftLeg.isRemoved() ? toVec(footWorld(leftLeg)) : null;
+        Vec3 right = rightLeg != null && !rightLeg.isRemoved() ? toVec(footWorld(rightLeg)) : null;
+        RagdollControlDebug.update(new RagdollControlDebug.Snapshot(
+                player.getUUID(),
+                body.getLevel().dimension(),
+                body.getLevel().getGameTime(),
+                stance,
+                debugNextFootholdValid ? toVec(debugNextFoothold) : null,
+                left,
+                right,
+                footDebugRayValid ? toVec(footDebugRayOrigin) : null,
+                footDebugRayValid ? toVec(footDebugRayEnd) : null,
+                footDebugRayHit,
+                toVec(bodyAnchor),
+                toVec(lastTarget)
+        ));
+    }
+
+    private static Vec3 toVec(Vector3d value) {
+        return new Vec3(value.x, value.y, value.z);
+    }
+
     /** 部件底端中心的粗略世界位置：沿部件本地 -Y 方向偏移半格（腿=脚底，手臂=手掌）。
      *  必须先本地偏移再变换——手臂抬起后本地 -Y 不再是世界下方，
      *  直接在世界上往下减会把"手掌"算到肚子位置（踩过的坑）。 */
@@ -1561,9 +1647,38 @@ public class RagdollControlSession {
         return pose.transformPosition(bottomLocal, new Vector3d());
     }
 
-    /** 腿的脚底中心世界位置：部件底端。 */
+    /** 腿的脚底中心世界位置：优先使用腿部碰撞箱最低面的中心。 */
     private Vector3d footWorld(ServerSubLevel leg) {
-        return partBottomWorld(leg);
+        if (!(leg.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity blockEntity)) {
+            return partBottomWorld(leg);
+        }
+        VoxelShape shape = blockEntity.getShape();
+        if (shape.isEmpty()) {
+            return partBottomWorld(leg);
+        }
+        var boxes = shape.toAabbs();
+        double bottomY = shape.min(Direction.Axis.Y);
+        double minX = Double.MAX_VALUE;
+        double maxX = -Double.MAX_VALUE;
+        double minZ = Double.MAX_VALUE;
+        double maxZ = -Double.MAX_VALUE;
+        for (var box : boxes) {
+            if (Math.abs(box.minY - bottomY) > 1.0e-5) {
+                continue;
+            }
+            minX = Math.min(minX, box.minX);
+            maxX = Math.max(maxX, box.maxX);
+            minZ = Math.min(minZ, box.minZ);
+            maxZ = Math.max(maxZ, box.maxZ);
+        }
+        var blockOrigin = leg.getPlot().getCenterBlock();
+        var bottomPlot = new Vector3d(
+                blockOrigin.getX() + (minX + maxX) * 0.5,
+                blockOrigin.getY() + bottomY,
+                blockOrigin.getZ() + (minZ + maxZ) * 0.5
+        );
+        var pose = leg.logicalPose();
+        return pose.transformPosition(bottomPlot, new Vector3d());
     }
 
     private static double massOf(ServerSubLevel subLevel) {
