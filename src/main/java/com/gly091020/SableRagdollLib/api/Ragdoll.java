@@ -15,6 +15,7 @@ import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.storage.SubLevelRemovalReason;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.Blocks;
@@ -69,7 +70,7 @@ public class Ragdoll {
             public void onSubLevelRemoved(SubLevel subLevel, SubLevelRemovalReason reason) {
                 if(reason != SubLevelRemovalReason.REMOVED)return;
                 if(subLevel instanceof ServerSubLevel serverSubLevel && subLevelUUIDList.contains(serverSubLevel.getUniqueId()))
-                    remove();
+                    ScheduleManager.scheduleDelayed(serverSubLevel.getLevel(), 0, () -> remove());
             }
         });
     }

@@ -8,8 +8,7 @@
     "GetPhysicsDataBEMixin",
     "LevelChunkMixin",
     "LivingEntityMixinMixin",
-    "ProjectileUtilMixin",
-    "SableSubLevelCommandsMixin"
+    "ProjectileUtilMixin"
   ],
   "client": [
     "CameraMixin",
