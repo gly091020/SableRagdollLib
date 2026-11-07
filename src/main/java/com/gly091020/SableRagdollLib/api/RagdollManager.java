@@ -1,10 +1,12 @@
 package com.gly091020.SableRagdollLib.api;
 
 import com.gly091020.SableRagdollLib.block.AbstractPartBlockEntity;
+import com.gly091020.SableRagdollLib.entity.PartSeat;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.SableCompanion;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
@@ -68,5 +70,16 @@ public class RagdollManager {
         var subLevel = c.getSubLevel(subLevelUUID);
         if(subLevel == null)return null;
         return get(subLevel);
+    }
+
+    @Nullable
+    public static Ragdoll get(PartSeat partSeat){
+        return get(partSeat.level(), partSeat.getMainUUID());
+    }
+
+    @Nullable
+    public static Ragdoll get(Entity entity){
+        if(entity.getVehicle() instanceof PartSeat partSeat)return get(partSeat);
+        return null;
     }
 }

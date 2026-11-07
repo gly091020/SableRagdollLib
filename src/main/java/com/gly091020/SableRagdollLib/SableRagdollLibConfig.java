@@ -8,4 +8,5 @@ public class SableRagdollLibConfig implements ConfigData {
     public boolean enableForceLoad = false;
     public boolean enableRagdollHurt = true;
     public boolean stunOnHurt = false;
+    public boolean enableInteract = false;
 }

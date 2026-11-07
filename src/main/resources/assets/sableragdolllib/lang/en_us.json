@@ -35,6 +35,7 @@
   "text.autoconfig.sableragdolllib.title": "Physics Ragdoll Library Settings",
   "text.autoconfig.sableragdolllib.option.enableForceLoad": "Force Load Physics Structures",
   "text.autoconfig.sableragdolllib.option.enableRagdollHurt": "Enable Injury",
+  "text.autoconfig.sableragdolllib.option.enableInteract": "Enable Interact",
   "text.autoconfig.sableragdolllib.option.stunOnHurt": "Stun on Hurt",
   "text.sableragdolllib.open_lib_config": "Open Lib Config",
 

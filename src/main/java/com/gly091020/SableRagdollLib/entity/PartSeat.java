@@ -266,8 +266,7 @@ public class PartSeat extends Entity {
     }
 
     public UUID getMainUUID() {
-        var uuid = this.entityData.get(DATA_MAIN_UUID).orElse(null);
-        return uuid != null ? uuid : mainUUID;
+        return this.entityData.get(DATA_MAIN_UUID).orElseGet(() -> mainUUID);
     }
 
     public Map<PartRole, UUID> getPartRoles() {
