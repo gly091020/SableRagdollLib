@@ -13,6 +13,7 @@ import com.gly091020.SableRagdollLib.test.TestMainClient;
 import me.shedaniel.autoconfig.AutoConfig;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
@@ -63,6 +64,9 @@ public class SableRagdollLibClient {
     @EventBusSubscriber(modid = SableRagdollLib.MODID, value = Dist.CLIENT)
     public static class EventHandler{
         private static boolean switchControlHeld;
+        private static boolean partSeatCameraActive;
+        private static float lastYRot;
+        private static float lastXRot;
 
         @SubscribeEvent
         public static void registerClientCommands(RegisterClientCommandsEvent event) {
@@ -85,6 +89,7 @@ public class SableRagdollLibClient {
 
         @SubscribeEvent
         public static void onClientTick(ClientTickEvent.Pre event){
+            handlePartSeatCamera();
             while (OPEN_EDITOR.consumeClick()){
                 if(SableRagdollLib.hasLDLib()) EditorOpener.open();
             }
@@ -97,6 +102,38 @@ public class SableRagdollLibClient {
             }
             RagdollDragClient.tick();
             RagdollControlClient.tick();
+        }
+
+        private static void handlePartSeatCamera() {
+            var mc = Minecraft.getInstance();
+            if(mc.player == null) {
+                if(partSeatCameraActive) {
+                    mc.options.setCameraType(CameraType.FIRST_PERSON);
+                    partSeatCameraActive = false;
+                }
+                return;
+            }
+
+            if(mc.player.getVehicle() instanceof PartSeat partSeat) {
+                if(!partSeatCameraActive) {
+                    partSeatCameraActive = true;
+                    float yRot = partSeat.hasRiderOrientation() ? partSeat.getRiderYRot() : lastYRot;
+                    float xRot = partSeat.hasRiderOrientation() ? partSeat.getRiderXRot() : lastXRot;
+                    mc.player.setYRot(yRot);
+                    mc.player.setXRot(xRot);
+                    mc.player.setYHeadRot(yRot);
+                    mc.player.setYBodyRot(yRot);
+                    mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+                }
+                return;
+            }
+
+            if(partSeatCameraActive) {
+                mc.options.setCameraType(CameraType.FIRST_PERSON);
+                partSeatCameraActive = false;
+            }
+            lastYRot = mc.player.getYRot();
+            lastXRot = mc.player.getXRot();
         }
 
         @SubscribeEvent

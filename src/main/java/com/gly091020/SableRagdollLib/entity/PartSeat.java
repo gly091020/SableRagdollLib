@@ -29,6 +29,12 @@ public class PartSeat extends Entity {
     /** 主子世界 UUID，通过实体数据同步到客户端（仅服务端可见的字段客户端拿不到）。 */
     private static final EntityDataAccessor<Optional<UUID>> DATA_MAIN_UUID =
             SynchedEntityData.defineId(PartSeat.class, EntityDataSerializers.OPTIONAL_UUID);
+    private static final EntityDataAccessor<Boolean> DATA_HAS_RIDER_ORIENTATION =
+            SynchedEntityData.defineId(PartSeat.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Float> DATA_RIDER_Y_ROT =
+            SynchedEntityData.defineId(PartSeat.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DATA_RIDER_X_ROT =
+            SynchedEntityData.defineId(PartSeat.class, EntityDataSerializers.FLOAT);
 
     private SubLevel main;
 
@@ -42,6 +48,9 @@ public class PartSeat extends Entity {
      * 所以单独存 UUID，等玩家上线后重新挂载。
      */
     private UUID pendingPassengerUUID;
+    private boolean riderOrientationValid;
+    private float riderYRot;
+    private float riderXRot;
 
     private static final EntityDataAccessor<Map<PartRole, UUID>> PART_ROLE =
             SynchedEntityData.defineId(PartSeat.class, SableRagdollLib.PART_ROLES.get());
@@ -64,6 +73,9 @@ public class PartSeat extends Entity {
     protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
         builder.define(DATA_MAIN_UUID, Optional.empty());
         builder.define(PART_ROLE, Map.of());
+        builder.define(DATA_HAS_RIDER_ORIENTATION, false);
+        builder.define(DATA_RIDER_Y_ROT, 0.0F);
+        builder.define(DATA_RIDER_X_ROT, 0.0F);
     }
 
     @Override
@@ -74,6 +86,14 @@ public class PartSeat extends Entity {
         }
         if(compoundTag.hasUUID("passenger"))
             pendingPassengerUUID = compoundTag.getUUID("passenger");
+        if(compoundTag.getBoolean("riderOrientationValid")) {
+            riderOrientationValid = true;
+            riderYRot = compoundTag.getFloat("riderYRot");
+            riderXRot = compoundTag.getFloat("riderXRot");
+            entityData.set(DATA_HAS_RIDER_ORIENTATION, true);
+            entityData.set(DATA_RIDER_Y_ROT, riderYRot);
+            entityData.set(DATA_RIDER_X_ROT, riderXRot);
+        }
     }
 
     @Override
@@ -84,12 +104,23 @@ public class PartSeat extends Entity {
         }
         if(PART_ROLE.equals(key))
             partRoles = entityData.get(PART_ROLE);
+        if(DATA_HAS_RIDER_ORIENTATION.equals(key))
+            riderOrientationValid = entityData.get(DATA_HAS_RIDER_ORIENTATION);
+        if(DATA_RIDER_Y_ROT.equals(key))
+            riderYRot = entityData.get(DATA_RIDER_Y_ROT);
+        if(DATA_RIDER_X_ROT.equals(key))
+            riderXRot = entityData.get(DATA_RIDER_X_ROT);
     }
 
     @Override
     protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         if (mainUUID != null)
             compoundTag.putUUID("main", mainUUID);
+        if(riderOrientationValid) {
+            compoundTag.putBoolean("riderOrientationValid", true);
+            compoundTag.putFloat("riderYRot", riderYRot);
+            compoundTag.putFloat("riderXRot", riderXRot);
+        }
         Entity passenger = onEntity != null ? onEntity : this.getFirstPassenger();
         if(passenger instanceof Player)
             compoundTag.putUUID("passenger", passenger.getUUID());
@@ -153,7 +184,6 @@ public class PartSeat extends Entity {
                 main = container.getSubLevel(mainUUID);
             }
         }
-        if(tickCount <= 20)return;
 
         boolean waitingPassenger = pendingPassengerUUID != null && !this.isVehicle();
         if(waitingPassenger && main != null && !main.isRemoved()){
@@ -202,7 +232,24 @@ public class PartSeat extends Entity {
     }
 
     public void rideMe(Entity entity){
-        entity.startRiding(this, true);
+        float yRot = entity.getYRot();
+        float xRot = entity.getXRot();
+        riderOrientationValid = true;
+        riderYRot = yRot;
+        riderXRot = xRot;
+        entityData.set(DATA_HAS_RIDER_ORIENTATION, true);
+        entityData.set(DATA_RIDER_Y_ROT, yRot);
+        entityData.set(DATA_RIDER_X_ROT, xRot);
+
+        if(!entity.startRiding(this, true)) {
+            return;
+        }
+        entity.setYRot(yRot);
+        entity.setXRot(xRot);
+        if(entity instanceof LivingEntity livingEntity) {
+            livingEntity.setYHeadRot(yRot);
+            livingEntity.setYBodyRot(yRot);
+        }
         onEntity = entity;
     }
 
@@ -225,5 +272,17 @@ public class PartSeat extends Entity {
 
     public Map<PartRole, UUID> getPartRoles() {
         return partRoles == null ? Collections.emptyMap() : partRoles;
+    }
+
+    public boolean hasRiderOrientation() {
+        return riderOrientationValid;
+    }
+
+    public float getRiderYRot() {
+        return riderYRot;
+    }
+
+    public float getRiderXRot() {
+        return riderXRot;
     }
 }

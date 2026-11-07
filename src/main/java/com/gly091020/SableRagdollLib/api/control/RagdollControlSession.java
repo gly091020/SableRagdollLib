@@ -148,6 +148,14 @@ public class RagdollControlSession {
     private static final double STEP_SIDE = 0.1;
     /** 落脚点相对地面的垂直偏移。 */
     private static final double FOOT_GROUND_OFFSET = 1.0 / 16.0;
+    /** 空中摆腿相位速度（弧度/刻） */
+    private static final double AIR_SWING_FREQUENCY = 1;
+    /** 空中摆腿最大角度（弧度） */
+    private static final double AIR_SWING_ANGLE = Math.toRadians(35.0);
+    /** 空中摆腿电机刚度、阻尼和最大扭矩 */
+    private static final double AIR_SWING_STIFFNESS = 1200;
+    private static final double AIR_SWING_DAMPING = 80;
+    private static final double AIR_SWING_MAX_TORQUE = 600;
     /** 恢复阶段的回正电机参数（×质量）。 */
     private static final double RECOVERY_ANGULAR_STIFFNESS = 2000;
     private static final double RECOVERY_ANGULAR_DAMPING = 90;
@@ -193,6 +201,8 @@ public class RagdollControlSession {
     private float inputYaw;
     /** 已走过的距离，达到 STEP_LENGTH 切换一次支撑脚 */
     private double stepProgress;
+    /** 空中摆腿相位 */
+    private int airSwingTicks;
     /** 上一刻是否在移动（停止移动后释放支撑脚关节） */
     private boolean wasMoving;
     /** 客户端输入：是否按住跳跃键（空格） */
@@ -257,6 +267,9 @@ public class RagdollControlSession {
     /** 当前支撑脚与它的回正约束（自由约束 + 线性电机） */
     private ServerSubLevel stanceLeg;
     private GenericConstraintHandle stanceJoint;
+    /** 空中摆腿的临时身体↔腿约束 */
+    private GenericConstraintHandle airSwingJointLeft;
+    private GenericConstraintHandle airSwingJointRight;
     /** 支撑脚约束的世界侧帧（落脚点，主世界坐标），电机目标相对它计算 */
     private final Vector3d stanceFramePos = new Vector3d();
     /** 支撑脚电机目标（相对世界侧帧的位移），每刻向 0 收敛 */
@@ -404,11 +417,13 @@ public class RagdollControlSession {
             releaseGrab();
         }
         if (recovering) {
+            releaseAirSwing();
             updateRecovery();
             return;
         }
         // 受伤眩晕：布娃娃完全失去控制瘫软，眩晕结束后站起并重建控制
         if (stunTicks > 0) {
+            releaseAirSwing();
             stunTicks--;
             if (stunTicks == 0) {
                 // 避免恢复时把眩晕期间按下的跳跃/抓取当成新按下误触发
@@ -479,6 +494,7 @@ public class RagdollControlSession {
             sendGrabRay(false);
         }
         updateStep();
+        applyAirLegSwing();
         applyStanceMotors();
         applyGrabMotors();
         updateGround();
@@ -518,6 +534,7 @@ public class RagdollControlSession {
             recovering = false;
             controlReady = false;
             releaseStance();
+            releaseAirSwing();
             removeJoint(groundJoint);
             groundJoint = null;
         });
@@ -599,6 +616,7 @@ public class RagdollControlSession {
         }
         disposed = true;
         releaseStance();
+        releaseAirSwing();
         releaseGrab();
         removeJoint(groundJoint);
         groundJoint = null;
@@ -640,6 +658,7 @@ public class RagdollControlSession {
             return false;
         }
         releaseStance();
+        releaseAirSwing();
         removeJoint(groundJoint);
         groundJoint = null;
         controlReady = false;
@@ -741,28 +760,26 @@ public class RagdollControlSession {
     }
 
     private double partLowestWorldY(ServerSubLevel part) {
-        if (part.getPlot().getEmbeddedLevelAccessor().getBlockEntity(BlockPos.ZERO) instanceof AbstractPartBlockEntity blockEntity) {
-            VoxelShape shape = blockEntity.getShape();
-            if (!shape.isEmpty()) {
-                var pose = part.logicalPose();
-                var blockOrigin = part.getPlot().getCenterBlock();
-                double min = Double.MAX_VALUE;
-                for (var box : shape.toAabbs()) {
-                    for (double x : new double[]{box.minX, box.maxX}) {
-                        for (double y : new double[]{box.minY, box.maxY}) {
-                            for (double z : new double[]{box.minZ, box.maxZ}) {
-                                var plot = new Vector3d(
-                                        blockOrigin.getX() + x,
-                                        blockOrigin.getY() + y,
-                                        blockOrigin.getZ() + z
-                                );
-                                min = Math.min(min, pose.transformPosition(plot, new Vector3d()).y);
-                            }
+        VoxelShape shape = part.getPlot().getEmbeddedLevelAccessor().getBlockState(BlockPos.ZERO).getCollisionShape(part.getLevel(), BlockPos.ZERO);
+        if (!shape.isEmpty()) {
+            var pose = part.logicalPose();
+            var blockOrigin = part.getPlot().getCenterBlock();
+            double min = Double.MAX_VALUE;
+            for (var box : shape.toAabbs()) {
+                for (double x : new double[]{box.minX, box.maxX}) {
+                    for (double y : new double[]{box.minY, box.maxY}) {
+                        for (double z : new double[]{box.minZ, box.maxZ}) {
+                            var plot = new Vector3d(
+                                    blockOrigin.getX() + x,
+                                    blockOrigin.getY() + y,
+                                    blockOrigin.getZ() + z
+                            );
+                            min = Math.min(min, pose.transformPosition(plot, new Vector3d()).y);
                         }
                     }
                 }
-                return min;
             }
+            return min;
         }
         var pose = part.logicalPose();
         return pose.transformPosition(pose.rotationPoint(), new Vector3d()).y - 0.5;
@@ -888,6 +905,93 @@ public class RagdollControlSession {
                 releaseStance();
             }
         }
+    }
+
+    /**
+     * 脚未着地时仍根据移动输入尝试摆动双腿。
+     * 临时增加身体↔腿角轴电机，避免腿关节原有回正电机把摆动抵消；两腿反相形成迈步动作。
+     */
+    private void applyAirLegSwing() {
+        if (!isMoving() || !isAirborne()) {
+            airSwingTicks = 0;
+            releaseAirSwing();
+            return;
+        }
+        double inputLength = Math.sqrt(inputMoveX * inputMoveX + inputMoveZ * inputMoveZ);
+        if (inputLength < 0.0001) {
+            airSwingTicks = 0;
+            releaseAirSwing();
+            return;
+        }
+
+        var bodyPose = body.logicalPose();
+        Vector3d localMove = bodyPose.orientation().conjugate(new Quaterniond()).transform(
+                new Vector3d(inputMoveX / inputLength, 0, inputMoveZ / inputLength), new Vector3d());
+        localMove.y = 0;
+        if (localMove.lengthSquared() < 1.0e-6) {
+            airSwingTicks = 0;
+            releaseAirSwing();
+            return;
+        }
+        localMove.normalize();
+
+        if (airSwingJointLeft == null || !airSwingJointLeft.isValid()) {
+            airSwingJointLeft = attachAirSwing(leftLeg);
+        }
+        if (airSwingJointRight == null || !airSwingJointRight.isValid()) {
+            airSwingJointRight = attachAirSwing(rightLeg);
+        }
+
+        double wave = Math.sin(++airSwingTicks * AIR_SWING_FREQUENCY) * AIR_SWING_ANGLE;
+        driveAirSwing(airSwingJointLeft, leftLeg, localMove, wave);
+        driveAirSwing(airSwingJointRight, rightLeg, localMove, -wave);
+    }
+
+    private GenericConstraintHandle attachAirSwing(ServerSubLevel leg) {
+        if (leg == null || leg.isRemoved()) {
+            return null;
+        }
+        try {
+            Vector3d bodyPlot = new Vector3d(body.logicalPose().rotationPoint());
+            Vector3d legPlot = new Vector3d(leg.logicalPose().rotationPoint());
+            GenericConstraintHandle joint = container.physicsSystem().getPipeline().addConstraint(
+                    body, leg,
+                    new GenericConstraintConfiguration(
+                            bodyPlot, legPlot,
+                            new Quaterniond(), new Quaterniond(),
+                            Set.of()));
+            if (joint != null && joint.isValid()) {
+                joint.setContactsEnabled(false);
+                return joint;
+            }
+        } catch (Exception e) {
+            LOGGER.debug("创建空中摆腿约束失败：", e);
+        }
+        return null;
+    }
+
+    private void driveAirSwing(GenericConstraintHandle joint, ServerSubLevel leg, Vector3d localMove, double wave) {
+        if (joint == null || !joint.isValid() || leg == null || leg.isRemoved()) {
+            return;
+        }
+        double mass = massOf(leg);
+        try {
+            joint.setMotor(ConstraintJointAxis.ANGULAR_X, localMove.z * wave,
+                    AIR_SWING_STIFFNESS * mass, AIR_SWING_DAMPING * mass,
+                    true, AIR_SWING_MAX_TORQUE * mass);
+            joint.setMotor(ConstraintJointAxis.ANGULAR_Z, -localMove.x * wave,
+                    AIR_SWING_STIFFNESS * mass, AIR_SWING_DAMPING * mass,
+                    true, AIR_SWING_MAX_TORQUE * mass);
+        } catch (Exception e) {
+            LOGGER.debug("驱动空中摆腿电机失败：", e);
+        }
+    }
+
+    private void releaseAirSwing() {
+        removeJoint(airSwingJointLeft);
+        airSwingJointLeft = null;
+        removeJoint(airSwingJointRight);
+        airSwingJointRight = null;
     }
 
     /** 切换支撑脚：把另一条腿锁定到下一个落脚点。 */
