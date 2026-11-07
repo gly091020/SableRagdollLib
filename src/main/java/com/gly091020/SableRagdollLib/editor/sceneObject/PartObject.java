@@ -57,6 +57,7 @@ public class PartObject extends SceneObject implements ISceneRendering, ISceneIn
         fakeBE.setData(new AbstractPartBlockEntity.Data(
                 false, partName, UUID.randomUUID(), modelID, project.file.type, partBox, renderData, Optional.empty(), new RagdollExpressions(Map.of()), List.of()
         ));
+        fakeBE.onEditorModelLoaded(modelID);
         renderer = Minecraft.getInstance()
                 .getBlockEntityRenderDispatcher()
                 .getRenderer(fakeBE);

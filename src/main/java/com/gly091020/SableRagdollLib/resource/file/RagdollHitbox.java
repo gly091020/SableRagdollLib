@@ -8,7 +8,6 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.IntStream;
 
 public record RagdollHitbox(Map<String, PartBox> hitbox) {
     public static final Codec<RagdollHitbox> CODEC = Codec.unboundedMap(
@@ -64,30 +63,28 @@ public record RagdollHitbox(Map<String, PartBox> hitbox) {
                       float maxX, float maxY, float maxZ) {
 
         public static final Codec<Box> CODEC =
-                Codec.INT_STREAM.comapFlatMap(stream -> {
-                    int[] arr = stream.toArray();
-
-                    if (arr.length == 3) {
+                Codec.FLOAT.listOf().comapFlatMap(values -> {
+                    if (values.size() == 3) {
                         return DataResult.success(
-                                Box.fromSize(arr[0], arr[1], arr[2])
+                                Box.fromSize(values.get(0), values.get(1), values.get(2))
                         );
-                    } else if (arr.length == 6) {
+                    } else if (values.size() == 6) {
                         return DataResult.success(new Box(
-                                arr[0] / 16f, arr[1] / 16f, arr[2] / 16f,
-                                arr[3] / 16f, arr[4] / 16f, arr[5] / 16f
+                                values.get(0) / 16f, values.get(1) / 16f, values.get(2) / 16f,
+                                values.get(3) / 16f, values.get(4) / 16f, values.get(5) / 16f
                         ));
                     } else {
                         return DataResult.error(() ->
-                                "Box requires 3 (size) or 6 (min/max) integers, got: " + arr.length
+                                "Box requires 3 (size) or 6 (min/max) numbers, got: " + values.size()
                         );
                     }
-                }, box -> IntStream.of(
-                        (int) (box.minX * 16f),
-                        (int) (box.minY * 16f),
-                        (int) (box.minZ * 16f),
-                        (int) (box.maxX * 16f),
-                        (int) (box.maxY * 16f),
-                        (int) (box.maxZ * 16f)
+                }, box -> List.of(
+                        box.minX * 16f,
+                        box.minY * 16f,
+                        box.minZ * 16f,
+                        box.maxX * 16f,
+                        box.maxY * 16f,
+                        box.maxZ * 16f
                 )).stable();
 
         public static Box fromSize(float xSize, float ySize, float zSize) {

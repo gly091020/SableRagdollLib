@@ -101,6 +101,9 @@ public abstract class AbstractPartBlockEntity extends BlockEntity {
         return shape;
     }
 
+    public void onEditorModelLoaded(ResourceLocation modelID){
+    }
+
     @Override
     public void setChanged() {
         super.setChanged();

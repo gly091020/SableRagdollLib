@@ -35,6 +35,7 @@ public class RagdollReloadListener extends SimpleJsonResourceReloadListener {
 
         DefFileLoader.clear();
         RagdollPartRecognizerRegistry.clear();
+        PartColliderBoxManager.reset();
         resourceLocationJsonElementMap.forEach(((resourceLocation, jsonElement) ->
                 RagdollDefFile.CODEC.parse(JsonOps.INSTANCE, jsonElement)
                 .resultOrPartial(e -> LOGGER.error("读取文件时出现错误：{}", e))
@@ -48,6 +49,7 @@ public class RagdollReloadListener extends SimpleJsonResourceReloadListener {
     public static void reload(ResourceManager resourceManager){
         DefFileLoader.clear();
         RagdollPartRecognizerRegistry.clear();
+        PartColliderBoxManager.reset();
         resourceManager.listResources("ragdoll", r -> r.getPath().endsWith(".json")).forEach(
                 (resourceLocation, resource) -> {
                     try (Reader reader = resource.openAsReader()) {

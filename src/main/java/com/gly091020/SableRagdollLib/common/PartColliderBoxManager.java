@@ -9,16 +9,23 @@ import dev.ryanhcode.sable.physics.chunk.VoxelNeighborhoodState;
 import dev.ryanhcode.sable.physics.config.block_properties.PhysicsBlockPropertyHelper;
 import dev.ryanhcode.sable.physics.impl.rapier.Rapier3D;
 import dev.ryanhcode.sable.physics.impl.rapier.collider.RapierVoxelColliderData;
-import joptsimple.internal.Strings;
 import net.minecraft.resources.ResourceLocation;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 // 大力出奇迹
 public class PartColliderBoxManager {
-    private static final Map<String, RapierVoxelColliderData> data = new HashMap<>();
+    private static final Map<CacheKey, RapierVoxelColliderData> data = new HashMap<>();
+
+    private record CacheKey(ResourceLocation defFile,
+                            ResourceLocation type,
+                            List<RagdollHitbox.Box> hitboxes,
+                            List<String> renderParts,
+                            List<String> blacklist) {
+    }
 
     public static void reset(){
         data.clear();
@@ -28,15 +35,20 @@ public class PartColliderBoxManager {
                                                           ResourceLocation type,
                                                           RagdollRenderData.PartRenderData renderData,
                                                           RagdollHitbox.PartBox blockShape){
-        var k = defFileID + "/" + Strings.join(renderData.parts().stream().map(RagdollRenderData.EveryPart::partName).toList(),
-                "|") + "/blacklist:" + Strings.join(renderData.blacklist(), "|");
-        if(data.containsKey(k))
-            return data.get(k);
+        var key = new CacheKey(
+                defFileID,
+                type,
+                List.copyOf(blockShape.boxes()),
+                renderData.parts().stream().map(RagdollRenderData.EveryPart::partName).toList(),
+                List.copyOf(renderData.blacklist())
+        );
+        if(data.containsKey(key))
+            return data.get(key);
         var settings = RagdollTypeRegistry.getRagdollType(type);
         if(settings == null)return RapierVoxelColliderData.EMPTY;
 
         var r = createOne(blockShape, settings);
-        data.put(k, r);
+        data.put(key, r);
         return r;
     }
 
